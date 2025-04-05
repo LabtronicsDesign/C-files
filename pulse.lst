@@ -1,0 +1,2049 @@
+##############################################################################
+#                                                                            #
+# IAR H8 C-Compiler V1.53F/WIN                                               #
+#                                                                            #
+#       Compile time  =  19/Jun/2003  11:42:00                               #
+#       Target option =  H8S/2300                                            #
+#       Memory model  =  large                                               #
+#       Source file   =  h:\jobs\eumedic3\pulse.c                            #
+#       List file     =  h:\jobs\eumedic3\debug\list\pulse.lst               #
+#       Object file   =  h:\jobs\eumedic3\debug\obj\pulse.r37                #
+#       Command line  =  -v3 -ml -OH:\Jobs\Eumedic3\Debug\Obj\ -RCODE -s9    #
+#                        -um0I0 -e -K -g -LH:\Jobs\Eumedic3\Debug\List\ -q   #
+#                        -t8 -IC:\IAR\EW23\h8\inc\ H:\Jobs\Eumedic3\pulse.c  #
+#                                                                            #
+#                           Copyright 2002 IAR Systems. All rights reserved. #
+##############################################################################
+
+   \                     	NAME	pulse(17)
+   \                     	RSEG	CODE(1)
+   \                     	COMMON	INTVEC(1)
+   \                     	RSEG	UDATA1(1)
+   \                     	RSEG	IDATA1(1)
+   \                     	RSEG	CDATA1(1)
+   \                     	RSEG	UDATA2(1)
+   \                     	RSEG	DTCRAM(1)
+   \                     	PUBLIC	beep_for
+   \                     	PUBLIC	beep_period_and_time
+   \                     	PUBLIC	count
+   \                     	PUBLIC	data_dest
+   \                     	PUBLIC	delta_flattened_count
+   \                     	PUBLIC	delta_width
+   \                     	PUBLIC	display_timer
+   \                     	PUBLIC	dog_state
+   \                     	PUBLIC	dose
+   \                     	PUBLIC	end_beep
+   \                     	PUBLIC	fifo
+   \                     	PUBLIC	find_thresh
+   \                     	PUBLIC	freeze_display
+   \                     	PUBLIC	freq_cycling_off
+   \                     	PUBLIC	frequency
+   \                     	PUBLIC	init_plus_50
+   \                     	PUBLIC	init_plus_percent
+   \                     	PUBLIC	initial_rate
+   \                     	PUBLIC	initial_width
+   \                     	PUBLIC	initital_rings
+   \                     	PUBLIC	intensity_off
+   \                     	PUBLIC	inter_pulse_period
+   \                     	PUBLIC	interrupt_counter
+   \                     	PUBLIC	io_init
+   \                     	PUBLIC	last_seconds
+   \                     	PUBLIC	last_width
+   \                     	PUBLIC	led_state
+   \                     	PUBLIC	menu_timer
+   \                     	PUBLIC	milli_sec_timer_init
+   \                     	PUBLIC	millisecond_tick_tpu
+   \                     	PUBLIC	milliseconds
+   \                     	PUBLIC	mod_counter
+   \                     	PUBLIC	modulate
+   \                     	PUBLIC	modulated_amp
+   \                     	PUBLIC	modulation_off
+   \                     	PUBLIC	modulation_timer
+   \                     	PUBLIC	n_rings
+   \                     	PUBLIC	nmi_service
+   \                     	PUBLIC	no_reading_count
+   \                     	PUBLIC	p2ddrc
+   \                     	PUBLIC	param
+   \                     	PUBLIC	pip_n_times
+   \                     	PUBLIC	power_off_timer
+   \                     	PUBLIC	pulse_in_svc
+   \                     	PUBLIC	pulse_index
+   \                     	PUBLIC	pulse_out_svc
+   \                     	PUBLIC	pulse_period
+   \                     	PUBLIC	ramping
+   \                     	PUBLIC	rate1
+   \                     	PUBLIC	read_battery
+   \                     	PUBLIC	reset_modulation
+   \                     	PUBLIC	response
+   \                     	PUBLIC	seconds
+   \                     	PUBLIC	set_pulse_period
+   \                     	PUBLIC	set_pulse_width
+   \                     	PUBLIC	set_up_hardware_count
+   \                     	PUBLIC	set_up_input_capture
+   \                     	PUBLIC	set_up_pulse_output
+   \                     	PUBLIC	setup_buzzer
+   \                     	PUBLIC	setup_dtc
+   \                     	PUBLIC	setup_threshold
+   \                     	PUBLIC	setup_tpu
+   \                     	PUBLIC	setup_watchdog
+   \                     	PUBLIC	skin_display
+   \                     	PUBLIC	start_button
+   \                     	EXTERN	stop_watch_seconds
+   \                     	EXTERN	stop_watch_start
+   \                     	EXTERN	stop_watch_time
+   \                     	PUBLIC	therapy_control
+   \                     	PUBLIC	therapy_timer
+   \                     	PUBLIC	this_width
+   \                     	EXTERN	time_low
+   \                     	EXTERN	timer_done
+   \                     	EXTERN	timer_go
+   \                     	PUBLIC	transfer1
+   \                     	EXTERN	wait
+   \                     	PUBLIC	warble
+   \                     	PUBLIC	write_analogue
+   \                     	EXTERN	?SL_DIV_L03
+   \                     	EXTERN	?F_MUL_L04
+   \                     	EXTERN	?F_DIV_L04
+   \                     	EXTERN	?SL_TO_F_L04
+   \                     	EXTERN	?CLH8SL_1_42_L00
+   \                     	RSEG	CODE
+      1          
+      2          
+      3          
+      4          
+      5          /*
+      6          
+      7          DESCRIPTION:   Pulse IO.
+      8          AUTHOR  : Karl Lam
+      9          DATE    : 23/1/2001
+     10          
+     11          */
+     12          
+     13                          
+     14          
+     15          
+     16          #pragma language=extended       /* Enable use of extended keywords */
+     17          
+     18          #include <stdio.h>
+     19          #include <inh8.h>               /* Intrinsic Funcs */
+     20          #include <string.h>
+     21          
+     22          #include "hardware.h"   
+     23          #include "serial.h"     
+     24          #include "time.h"               
+     25          #include "iic.h"
+     26          #include "pulse.h"
+     27                          
+     28          #include "general.h"
+     29          #include "graphic.h"
+     30          
+     31                          
+     32          #include "gmenus.h"
+     33          #include "debug.h"
+     34          
+     35          
+     36          /***********************************************************************************/
+     37          
+     38          
+     39          #pragma memory=near
+     40          
+     41          /* The parameters for the instrument. */
+     42          parameter_block param;
+     43          
+     44          
+     45          
+     46          volatile char p2ddrc;
+     47          
+     48          short pulse_period;
+     49          short inter_pulse_period;
+     50          
+     51          char interrupt_counter = 0;     
+     52          char dog_state = 0;                     
+     53          char led_state = 0;                     
+     54          char count = 0;
+     55          char pulse_index = 0;
+     56          char n_rings = 0;
+     57          char initital_rings = 0;
+     58          
+     59          
+     60          short frequency = FREQ_DEF;
+     61          
+     62          
+     63          //char pulse_out_count = INTENSITY_MIN;
+     64          
+     65          char ramping = 0;
+     66          
+     67          short modulated_amp = STRENGTH_MIN;
+     68          
+     69          char start_button;
+     70          
+     71          char mod_counter;
+     72          
+     73          #pragma memory=default
+     74          
+     75          
+     76          
+     77          
+     78          
+     79          void setup_watchdog()
+     80          {
+   \                     setup_watchdog:
+     81                  tcnt_w = 0x5A00;                                        /* Set the counter 0. */
+   \   00000000   79065A00           MOV.W   #23040,R6
+   \   00000004   6B86FFBC           MOV.W   R6,@0xFFFFFFBC
+     82                  tcsr_w  = 0xA500 | BIT6 | BIT5 | 7 ; /* Generate ext. reset signal; Counting */ 
+   \   00000008   7906A567           MOV.W   #42343,R6
+   \   0000000C   6B86FFBC           MOV.W   R6,@0xFFFFFFBC
+     83                  rstcsr_w = 0x5A00 | BIT6;                       /* Power-on reset */
+   \   00000010   79065A40           MOV.W   #23104,R6
+   \   00000014   6B86FFBE           MOV.W   R6,@0xFFFFFFBE
+     84          }       
+   \   00000018   5470               RTS     
+     85          
+     86          
+     87          void interrupt [NMI] nmi_service()
+     88          {
+   \                     nmi_service:
+     89          }       
+   \   0000001A   5670               RTE     
+     90          
+     91          
+     92          void interrupt [TPU_TGI2A] millisecond_tick_tpu()
+     93          {
+   \                     millisecond_tick_tpu:
+   \   0000001C   01006DF6           PUSH.L  ER6
+     94                  /* Clear the interrupt source */
+     95                  tpu_tsr2 &= 0xFF - TGFA;
+   \   00000020   7FF57200           BCLR    #0,@0xFFFFFFF5
+     96                          
+     97                  INTS_ON; /* Let other interrupts in. */
+   \   00000024   067F               ANDC    #127,CCR
+     98                  
+     99                  /* Inc time low */
+    100                  time_low += 1;
+   \   00000026   01006B06           MOV.L   @time_low:16,ER6
+   \            ....    
+   \   0000002C   0B06               ADDS.L  #1,ER6
+   \   0000002E   01006B86           MOV.L   ER6,@time_low:16
+   \            ....    
+    101          }
+   \   00000034   01006D76           POP.L   ER6
+   \   00000038   5670               RTE     
+    102          
+    103          
+    104          
+    105          /* Init the system interrupts in the TPU, not 8-bit timer. */
+    106          void milli_sec_timer_init()
+    107          {
+   \                     milli_sec_timer_init:
+    108                  mstpcrh &= 0xFF - TPU_STOP ;/* enable the TPU */
+   \   0000003A   7F3C7250           BCLR    #5,@0xFFFFFF3C
+    109          
+    110          
+    111                  /* Set up a PWM channel. */
+    112                  tpu_tcr2 =  0x20 |  0x2;        /* Clear on TGReg A ; [Phi/16->250KHz] on chan 2 */
+   \   0000003E   FE22               MOV.B   #34,R6L
+   \   00000040   3EF0               MOV.B   R6L,@0xFFFFFFF0
+    113                  tpu_tior2 = 0;                          /* Output: NONE  */
+   \   00000042   18EE               SUB.B   R6L,R6L
+   \   00000044   3EF2               MOV.B   R6L,@0xFFFFFFF2
+    114          
+    115                  tpu_tgr2a = 250 -1;                     /* Overall period (1mS @ 4MHz) */
+   \   00000046   790600F9           MOV.W   #249,R6
+   \   0000004A   6B86FFF8           MOV.W   R6,@0xFFFFFFF8
+    116          
+    117                  tpu_tgr2b = 0;                          /* duty */
+   \   0000004E   1966               SUB.W   R6,R6
+   \   00000050   6B86FFFA           MOV.W   R6,@0xFFFFFFFA
+    118          
+    119                  tstr |= BIT2;                           /* Start chan 2 */
+   \   00000054   7FC07020           BSET    #2,@0xFFFFFFC0
+    120          
+    121                  tpu_tier2 |= TGIEA;             /* Ints on TGReg A compare. */
+   \   00000058   7FF47000           BSET    #0,@0xFFFFFFF4
+    122          }       
+   \   0000005C   5470               RTS     
+    123          
+    124          
+    125          
+    126          
+    127          /***********************************************************************************/
+    128          
+    129                  
+    130          
+    131          /* Set up the H8 I/O */
+    132          void io_init()
+    133          {
+   \                     io_init:
+    134                  /* Make sure all ports that are not connected, or are outputs are set up 
+    135                  as outputs so they don't drift into the CMOS high-current region. */
+    136          
+    137                  #define PORT_1_OUTPUT_BITS (BIT1 | BIT3 | BIT5 | BIT6 | BIT7) /* Bit 4 now an input too! */
+    138                  #define PORT_2_OUTPUT_BITS (BIT1 | BIT2 | BIT3 | BIT4 | BIT5 | BIT6 | BIT7)
+    139                  #define PORT_3_OUTPUT_BITS (BIT2 | BIT3 | BIT4)
+    140                  #define PORT_E_OUTPUT_BITS (BIT6 | BIT7)
+    141                  #define PORT_F_OUTPUT_BITS (BIT0 | BIT1 | BIT2)
+    142                  #define PORT_G_OUTPUT_BITS (BIT0 | BIT1 | BIT2)
+    143          
+    144          
+    145                  p1ddr = PORT_1_OUTPUT_BITS;
+   \   0000005E   FEEA               MOV.B   #234,R6L
+   \   00000060   6A8EFEB0           MOV.B   R6L,@0xFFFFFEB0
+    146          
+    147                  p2dr  = SDA | SCL;      /* Be careful not to turn on the main transistor! */
+   \   00000064   FEA0               MOV.B   #160,R6L
+   \   00000066   3E61               MOV.B   R6L,@0xFFFFFF61
+    148                  p2ddr = p2ddrc = PORT_2_OUTPUT_BITS;
+   \   00000068   FEFE               MOV.B   #254,R6L
+   \   0000006A   6A8E....           MOV.B   R6L,@p2ddrc:16
+   \   0000006E   6A8EFEB1           MOV.B   R6L,@0xFFFFFEB1
+    149                  p3ddr = PORT_3_OUTPUT_BITS;
+   \   00000072   FE1C               MOV.B   #28,R6L
+   \   00000074   6A8EFEB2           MOV.B   R6L,@0xFFFFFEB2
+    150          
+    151                  pepcr = BIT0 | BIT1 | BIT2 | BIT3; /* Pull up the buttons */
+   \   00000078   FE0F               MOV.B   #15,R6L
+   \   0000007A   3E74               MOV.B   R6L,@0xFFFFFF74
+    152                  pedr = 0xFF; /* Keep the LCD control bits high to start with [else get bad data into LCD?] */
+   \   0000007C   FEFF               MOV.B   #255,R6L
+   \   0000007E   3E6D               MOV.B   R6L,@0xFFFFFF6D
+    153                  peddr = PORT_E_OUTPUT_BITS;
+   \   00000080   FEC0               MOV.B   #192,R6L
+   \   00000082   6A8EFEBD           MOV.B   R6L,@0xFFFFFEBD
+    154          
+    155                  pfddr = PORT_F_OUTPUT_BITS;
+   \   00000086   FE07               MOV.B   #7,R6L
+   \   00000088   6A8EFEBE           MOV.B   R6L,@0xFFFFFEBE
+    156          
+    157                  pgddr = PORT_G_OUTPUT_BITS | CS0 | CS1; /* remember to keep the CS\'s that were set up in lowlevel.c! */
+   \   0000008C   FE1F               MOV.B   #31,R6L
+   \   0000008E   6A8EFEBF           MOV.B   R6L,@0xFFFFFEBF
+    158          
+    159              pulse_out_count = INTENSITY_MIN;  /* Needs setting explicitly. */
+   \   00000092   FE01               MOV.B   #1,R6L
+   \   00000094   3E6B               MOV.B   R6L,@0xFFFFFF6B
+    160          }
+   \   00000096   5470               RTS     
+    161          
+    162          
+    163          
+    164          /*
+    165          The OUTPUT COMPARE interrupt - every time the output pulse goes high.
+    166          See diagrams in Karl's notebook 19/9/01 for schematic of timing.
+    167          
+    168          Important:
+    169           The capture should be enabled as soon as possible after we get into the interrupt.
+    170           We only enable input capture for the last pulse in a train, as earlier
+    171            pulses will be cut short by later ones.
+    172           The pulse counting is done in hardware, so we don't have to do that very fast.
+    173           We only read the pulse count at the start of the first pulse in a train, 
+    174            as that is the result of the last pulse's ringing.
+    175          
+    176           To get into the fast bits quickly, we make sure that the test is for zero,
+    177           and that we test a fast access location.
+    178          
+    179          */
+    180          void interrupt [TPU_TGI3A] pulse_out_svc()
+    181          {
+   \                     pulse_out_svc:
+   \   00000098   6DF5               PUSH.W  R5
+   \   0000009A   6DF6               PUSH.W  R6
+    182                  if (! pulse_out_count ) /* Is this the _last_ pulse in an 'intensity group'? */
+   \   0000009C   2E6B               MOV.B   @0xFFFFFF6B,R6L
+   \   0000009E   4626               BNE     ?0011
+    183                  {
+    184                          /* Only measure the effects of the last pulse in the group. */
+    185                          /* Set up the input capture via the TPU and DTC. */
+    186                          tpu_tsr0 &= 0xFF - TGFA;        /* [Clear pulse in interrupts to avoid any input from prev 'intensity' pulses.] */
+   \   000000A0   7FD57200           BCLR    #0,@0xFFFFFFD5
+    187                          tpu_tier0 |= TGIEA;             /* Ints ON TGReg A capture. Allow DTC/interrupts for next set of captures. */
+   \   000000A4   7FD47000           BSET    #0,@0xFFFFFFD4
+    188          
+    189                      tpu_tgr3a = pulse_period;   /* Set up the normal gap till the next output pulse. */
+   \   000000A8   6B06....           MOV.W   @pulse_period:16,R6
+   \   000000AC   6B86FE88           MOV.W   R6,@0xFFFFFE88
+    190          
+    191          
+    192                  if (param.pulse_out_number == 1)  /* first pulse? */
+   \   000000B0   6A0E....           MOV.B   @param+12:16,R6L
+   \   000000B4   AE01               CMP.B   #1,R6L
+   \   000000B6   4606               BNE     ?0013
+    193                  {
+    194                      n_rings = tpu_tgr1a;            
+   \   000000B8   2EE9               MOV.B   @0xFFFFFFE9,R6L
+   \   000000BA   6A8E....           MOV.B   R6L,@n_rings:16
+   \                     ?0013:
+    195                  }
+    196          
+    197          
+    198                          pulse_out_count = param.pulse_out_number; /* Set up the pulse number. */
+   \   000000BE   6A0E....           MOV.B   @param+12:16,R6L
+   \   000000C2   3E6B               MOV.B   R6L,@0xFFFFFF6B
+    199                  }
+    200                  else
+   \   000000C4   401E               BRA     ?0016
+   \                     ?0011:
+    201                  {
+    202                          tpu_tgr3a = inter_pulse_period;
+   \   000000C6   6B06....           MOV.W   @inter_pulse_period:16,R6
+   \   000000CA   6B86FE88           MOV.W   R6,@0xFFFFFE88
+    203          
+    204          
+    205                  if (param.pulse_out_number-1 == pulse_out_count) /* first pulse? */
+   \   000000CE   6A0D....           MOV.B   @param+12:16,R5L
+   \   000000D2   1755               EXTU.W  R5
+   \   000000D4   1B55               DEC.W   #1,R5
+   \   000000D6   2E6B               MOV.B   @0xFFFFFF6B,R6L
+   \   000000D8   1756               EXTU.W  R6
+   \   000000DA   1D65               CMP.W   R6,R5
+   \   000000DC   4606               BNE     ?0016
+    206                  {
+    207                      n_rings = tpu_tgr1a;            
+   \   000000DE   2EE9               MOV.B   @0xFFFFFFE9,R6L
+   \   000000E0   6A8E....           MOV.B   R6L,@n_rings:16
+   \                     ?0016:
+    208                  }
+    209                  }
+    210          
+    211                  /* Clear the interrupt source */
+    212                  tpu_tsr3 &= 0xFF - TGFA;
+   \   000000E4   6A18FE85           BCLR    #0,@0xFFFFFE85
+   \            7200    
+    213          
+    214          
+    215              pulse_out_count--;     /* count down pulses. */
+   \   000000EA   2E6B               MOV.B   @0xFFFFFF6B,R6L
+   \   000000EC   8EFF               ADD.B   #-1,R6L
+   \   000000EE   3E6B               MOV.B   R6L,@0xFFFFFF6B
+    216          
+    217          
+    218          }                                        
+   \   000000F0   6D76               POP.W   R6
+   \   000000F2   6D75               POP.W   R5
+   \   000000F4   5670               RTE     
+    219          
+    220          
+    221          /***********************************************************************************/
+    222          
+    223          /******
+    224          DTC data is stored in the internal RAM: F800 - FBFF (p173 of hardware manual 18-010B)
+    225          *****/
+    226          
+    227          
+    228          typedef struct
+    229          {
+    230                  union
+    231                  {
+    232                          char mode;
+    233                          void * address; /* Must set mode AFTER address! */
+    234                  }chana;           /* Mode A and Source. */
+    235          
+    236                  union
+    237                  {
+    238                          char mode;
+    239                          void * address; /* Must set mode AFTER address! */
+    240                  }chanb;           /* Mode A and Dest. */
+    241          
+    242                  short counta;
+    243          
+    244                  short countb;
+    245          
+    246          }dtc_frame;     
+    247          
+    248          #pragma memory=dataseg(DTCRAM)
+    249                  dtc_frame transfer1;
+    250          #pragma memory=default
+    251          
+    252          #define ARRAY_SIZE 2
+    253          #pragma memory=near
+    254          unsigned short data_dest[ARRAY_SIZE+2]; /* +2: a bit of extra room. */
+    255          #pragma memory=default
+    256          
+    257          
+    258          /******
+    259          
+    260          The INPUT CAPTURE interrupt.
+    261          
+    262           We only get this int after the DTC has done it's job. 
+    263          
+    264          *****/
+    265          
+    266          void interrupt [TPU_TGI0A] pulse_in_svc()
+    267          {
+   \                     pulse_in_svc:
+   \   000000F6   01006DF6           PUSH.L  ER6
+    268                                                  //p2dr &= 0xFF - SCL;
+    269                                                  //p2dr |= SCL;
+    270          
+    271                  /* Turn OFF input capture ints. */
+    272                  tpu_tier0 &= 0xFF - TGIEA; /* TGReg A capture. */
+   \   000000FA   7FD47200           BCLR    #0,@0xFFFFFFD4
+    273          
+    274                  tpu_tsr0 &= 0xFF - TGFA; /* [clear any possible pending interrupt cause.] */
+   \   000000FE   7FD57200           BCLR    #0,@0xFFFFFFD5
+    275          
+    276          
+    277                  /***** setup DTC for the next set of data ***********************/
+    278                  transfer1.chanb.address = data_dest;    /* DEST */
+   \   00000102   7906....           MOV.W   #data_dest,R6
+   \   00000106   17F6               EXTS.L  ER6
+   \   00000108   01006BA6           MOV.L   ER6,@transfer1+4:32
+   \            ........
+    279                  transfer1.chanb.mode    = 0;
+   \   00000110   18EE               SUB.B   R6L,R6L
+   \   00000112   6AAE....           MOV.B   R6L,@transfer1+4:32
+   \            ....    
+    280                  transfer1.counta =  ARRAY_SIZE;                 /* No. of data transfers. */
+   \   00000118   79060002           MOV.W   #2,R6
+   \   0000011C   6BA6....           MOV.W   R6,@transfer1+8:32
+   \            ....    
+    281                  dtcerb |= BIT5;                                                 /* DTC activation for pulse in [p185] */
+   \   00000122   7F317050           BSET    #5,@0xFFFFFF31
+    282                  /***************************************/
+    283          }       
+   \   00000126   01006D76           POP.L   ER6
+   \   0000012A   5670               RTE     
+    284          
+    285          
+    286          
+    287          void setup_dtc()
+    288          {       char i;
+   \                     setup_dtc:
+    289          
+    290                  /* TPU_TGI0A - the interrupt that activates the DTC.
+    291                      corresponds to vector #32 - address 0x0440.
+    292                     Page 185 of hardware manual. */
+    293          
+    294                  for (i=0; i < ARRAY_SIZE; i++ )
+   \   0000012C   18DD               SUB.B   R5L,R5L
+   \                     ?0018:
+   \   0000012E   AD02               CMP.B   #2,R5L
+   \   00000130   4412               BCC     ?0017
+    295                  {
+    296                     data_dest[i] = 0;
+   \   00000132   19DD               SUB.W   E5,E5
+   \   00000134   0CDE               MOV.B   R5L,R6L
+   \   00000136   1756               EXTU.W  R6
+   \   00000138   1096               SHAL.W  R6
+   \   0000013A   17F6               EXTS.L  ER6
+   \   0000013C   6FED....           MOV.W   E5,@(data_dest:16,ER6)
+   \   00000140   8D01               ADD.B   #1,R5L
+   \   00000142   40EA               BRA     ?0018
+   \                     ?0017:
+    297                  }
+    298          
+    299                  /*  DTC vector has been set up to point to the frame in 'context.s__' */
+    300          //PRINT "$%x $%p \r\n", *(short *)0x440 , &transfer1 PREND
+    301          
+    302                  /* Set up the DTC frame. */
+    303                  transfer1.chana.address = (void*)TPU_TGR0A; /* source */
+   \   00000144   7A06FFFF           MOV.L   #-40,ER6
+   \            FFD8    
+   \   0000014A   01006BA6           MOV.L   ER6,@transfer1:32
+   \            ........
+    304          
+    305                  transfer1.chana.mode    = MRA_SRC_FIX | MRA_DST_INC     | MRA_NORM | MRA_SZ_WORD;
+   \   00000152   FE21               MOV.B   #33,R6L
+   \   00000154   6AAE....           MOV.B   R6L,@transfer1:32
+   \            ....    
+    306          
+    307                  transfer1.chanb.address = data_dest; /* DEST */
+   \   0000015A   7906....           MOV.W   #data_dest,R6
+   \   0000015E   17F6               EXTS.L  ER6
+   \   00000160   01006BA6           MOV.L   ER6,@transfer1+4:32
+   \            ........
+    308          
+    309                  transfer1.chanb.mode    = 0;
+   \   00000168   18EE               SUB.B   R6L,R6L
+   \   0000016A   6AAE....           MOV.B   R6L,@transfer1+4:32
+   \            ....    
+    310          
+    311                  transfer1.counta =  ARRAY_SIZE; /* No. of data transfers. */
+   \   00000170   79060002           MOV.W   #2,R6
+   \   00000174   6BA6....           MOV.W   R6,@transfer1+8:32
+   \            ....    
+    312          
+    313                  transfer1.countb = 0;   /* only used in block mode. */
+   \   0000017A   1966               SUB.W   R6,R6
+   \   0000017C   6BA6....           MOV.W   R6,@transfer1+10:32
+   \            ....    
+    314          
+    315          }
+   \   00000182   5470               RTS     
+    316          
+    317          
+    318          
+    319                  
+    320          
+    321          #define TRANSISTOR_TURNOFF_uS 11
+    322          
+    323          /* Give the value to put in the compare reg from the 'strength' value. */
+    324          void set_pulse_width(char strength)
+    325          {
+   \                     set_pulse_width:
+    326                   tpu_tgr3d = strength * 2 - TRANSISTOR_TURNOFF_uS -1 ;  
+   \   00000184   1756               EXTU.W  R6
+   \   00000186   1096               SHAL.W  R6
+   \   00000188   7916FFF4           ADD.W   #-12,R6
+   \   0000018C   6B86FE8E           MOV.W   R6,@0xFFFFFE8E
+    327          }
+   \   00000190   5470               RTS     
+    328          
+    329          #define MAIN_TPU_FREQ 1000000
+    330          
+    331          /* Give the value to put in the compare reg from the 'frequency' value. */
+    332          void set_pulse_period()
+    333          {
+   \                     set_pulse_period:
+   \   00000192   6DF0               PUSH.W  R0
+    334                  long period = (MAIN_TPU_FREQ / frequency) - 1;
+   \   00000194   6B05....           MOV.W   @frequency:16,R5
+   \   00000198   17F5               EXTS.L  ER5
+   \   0000019A   7A06000F           MOV.L   #1000000,ER6
+   \            4240    
+   \   000001A0   5E......           JSR     @?SL_DIV_L03
+   \   000001A4   1B06               SUBS.L  #1,ER6
+    335          
+    336                  /* Take account of multiple pulses going out. */
+    337                  period = period - ( (param.pulse_out_number-1) * (inter_pulse_period ) ); 
+   \   000001A6   6A08....           MOV.B   @param+12:16,R0L
+   \   000001AA   1750               EXTU.W  R0
+   \   000001AC   1B50               DEC.W   #1,R0
+   \   000001AE   6B05....           MOV.W   @inter_pulse_period:16,R5
+   \   000001B2   5205               MULXU.W R0,ER5
+   \   000001B4   17F5               EXTS.L  ER5
+   \   000001B6   1AD6               SUB.L   ER5,ER6
+    338          
+    339          
+    340                  /* limit the freq. */
+    341                  if (period < MAIN_TPU_FREQ / FREQ_MAX)
+   \   000001B8   7A260000           CMP.L   #2857,ER6
+   \            0B29    
+   \   000001BE   4C06               BGE     ?0022
+    342                          period = MAIN_TPU_FREQ / FREQ_MAX;
+   \   000001C0   7A060000           MOV.L   #2857,ER6
+   \            0B29    
+   \                     ?0022:
+    343          
+    344                  if (period > 0xFFFF)
+   \   000001C6   7A260000           CMP.L   #65535,ER6
+   \            FFFF    
+   \   000001CC   4F06               BLE     ?0024
+    345                          period = 0xFFFF;
+   \   000001CE   7A060000           MOV.L   #65535,ER6
+   \            FFFF    
+   \                     ?0024:
+    346          
+    347          
+    348                  pulse_period = period;
+   \   000001D4   6B86....           MOV.W   R6,@pulse_period:16
+    349          
+    350          
+    351                  inter_pulse_period = (param.z_value * 20) + (tpu_tgr3b + 1 + 20) ;
+   \   000001D8   6B05FE8A           MOV.W   @0xFFFFFE8A,R5
+   \   000001DC   79150015           ADD.W   #21,R5
+   \   000001E0   6A0E....           MOV.B   @param+13:16,R6L
+   \   000001E4   F814               MOV.B   #20,R0L
+   \   000001E6   5086               MULXU.B R0L,R6
+   \   000001E8   0965               ADD.W   R6,R5
+   \   000001EA   6B85....           MOV.W   R5,@inter_pulse_period:16
+    352          }
+   \   000001EE   6D70               POP.W   R0
+   \   000001F0   5470               RTS     
+    353          
+    354                  
+    355          
+    356          void set_up_pulse_output()
+    357          {
+   \                     set_up_pulse_output:
+    358          
+    359                  /* Set up a PWM channel. */
+    360                  tpu_tcr3 =  0x20 |  0x1;        /* Clear on TGReg A ; Phi/4 on chan 3 */
+   \   000001F2   FE21               MOV.B   #33,R6L
+   \   000001F4   6A8EFE80           MOV.B   R6L,@0xFFFFFE80
+    361                  tpu_tior3h = 0x20 | 0x1;        /* Output: 1 on TGReg B; 0 on TGReg A. */
+   \   000001F8   6A8EFE82           MOV.B   R6L,@0xFFFFFE82
+    362          
+    363                  set_pulse_width(STRENGTH_MIN);          /* duty */
+   \   000001FC   FE0A               MOV.B   #10,R6L
+   \   000001FE   5584               BSR     set_pulse_width
+    364                  tpu_tgr3b =     tpu_tgr3d; /* Set up initial pulse width. */
+   \   00000200   6B06FE8E           MOV.W   @0xFFFFFE8E,R6
+   \   00000204   6B86FE8A           MOV.W   R6,@0xFFFFFE8A
+    365          
+    366                  set_pulse_period();             /* 60Hz */
+   \   00000208   5588               BSR     set_pulse_period
+    367          
+    368          
+    369          
+    370                  tpu_tmdr3 = BIT1 | BIT5 ;                       /* PWM Mode 1 & buffer mode for B/D */
+   \   0000020A   FE22               MOV.B   #34,R6L
+   \   0000020C   6A8EFE81           MOV.B   R6L,@0xFFFFFE81
+    371          
+    372                  tstr |= BIT3;                           /* Start chan 3 */
+   \   00000210   7FC07030           BSET    #3,@0xFFFFFFC0
+    373          
+    374                  tpu_tier3 |= TGIEA; /* Ints on TGReg A compare. */
+   \   00000214   6A18FE84           BSET    #0,@0xFFFFFE84
+   \            7000    
+    375          }       
+   \   0000021A   5470               RTS     
+    376          
+    377          
+    378          void set_up_input_capture()
+    379          {
+   \                     set_up_input_capture:
+    380                  tpu_tcr0 =  0x20 |  0x1;        /* Clear on TGReg A ; Phi/4 */
+   \   0000021C   FE21               MOV.B   #33,R6L
+   \   0000021E   3ED0               MOV.B   R6L,@0xFFFFFFD0
+    381                  tpu_tior0h = 0x8 | 0x1;         /* Capture; TIOCA0/TGR0A/FALL edge. */
+   \   00000220   FE09               MOV.B   #9,R6L
+   \   00000222   3ED2               MOV.B   R6L,@0xFFFFFFD2
+    382          
+    383                  tstr |= BIT0;                           /* Start chan 0 */
+   \   00000224   7FC07000           BSET    #0,@0xFFFFFFC0
+    384          
+    385                  tpu_tier0 |= TGIEA;             /* Ints on TGReg A capture. */
+   \   00000228   7FD47000           BSET    #0,@0xFFFFFFD4
+    386          }
+   \   0000022C   5470               RTS     
+    387          
+    388          /* Count clock pulses on channel 1. */
+    389          void set_up_hardware_count()
+    390          {
+   \                     set_up_hardware_count:
+    391                  tpu_tcr1 = BIT5 | BIT4 | BIT2;  /* Both edges; TCLKA; CLEAR ON TGRA */
+   \   0000022E   FE34               MOV.B   #52,R6L
+   \   00000230   3EE0               MOV.B   R6L,@0xFFFFFFE0
+    392                  tpu_tior1 = BIT3 | BIT0;            /* Capture; TIOCA1/TGR1A/FALL edge. */
+   \   00000232   FE09               MOV.B   #9,R6L
+   \   00000234   3EE2               MOV.B   R6L,@0xFFFFFFE2
+    393                  tstr |= BIT1;                               /* Start chan 1 */
+   \   00000236   7FC07010           BSET    #1,@0xFFFFFFC0
+    394          }
+   \   0000023A   5470               RTS     
+    395          
+    396          
+    397          
+    398          
+    399          /* Buzzer is on channel 4 */
+    400          #define BEEP_NORM (250) /* 4KHz is 250 */
+    401          
+    402          void setup_buzzer()
+    403          {
+   \                     setup_buzzer:
+    404                  mstpcrh &= 0xFF - TPU_STOP ;/* enable the TPU */
+   \   0000023C   7F3C7250           BCLR    #5,@0xFFFFFF3C
+    405          
+    406                  /* Set up a PWM channel. */
+    407                  tpu_tcr4 =  0x20 | 0x1;         /* Clear on TGReg A ; Phi/4 */
+   \   00000240   FE21               MOV.B   #33,R6L
+   \   00000242   6A8EFE90           MOV.B   R6L,@0xFFFFFE90
+    408          
+    409                  tpu_tior4 = 0x20 | 0x1;         /* Output: 1 on TGReg B; 0 on TGReg A. */
+   \   00000246   6A8EFE92           MOV.B   R6L,@0xFFFFFE92
+    410          
+    411                  tpu_tgr4a = BEEP_NORM;          /* Period */
+   \   0000024A   790600FA           MOV.W   #250,R6
+   \   0000024E   6B86FE98           MOV.W   R6,@0xFFFFFE98
+    412          
+    413                  tpu_tgr4b = tpu_tgr4a;          /* Duty - off to start with. */
+   \   00000252   6B06FE98           MOV.W   @0xFFFFFE98,R6
+   \   00000256   6B86FE9A           MOV.W   R6,@0xFFFFFE9A
+    414          
+    415                  tpu_tmdr4 = 2;                          /* PWM Mode 1 */
+   \   0000025A   FE02               MOV.B   #2,R6L
+   \   0000025C   6A8EFE91           MOV.B   R6L,@0xFFFFFE91
+    416          
+    417                  tstr |= BIT4;                           /* Start chan 4 */
+   \   00000260   7FC07040           BSET    #4,@0xFFFFFFC0
+    418          }               
+   \   00000264   5470               RTS     
+    419          
+    420          
+    421          
+    422          void setup_tpu()
+    423          {
+   \                     setup_tpu:
+    424                  mstpcrh &= 0xFF - TPU_STOP ;/* enable the TPU */
+   \   00000266   7F3C7250           BCLR    #5,@0xFFFFFF3C
+    425          
+    426                  set_up_pulse_output();
+   \   0000026A   5586               BSR     set_up_pulse_output
+    427          
+    428                  set_up_input_capture();
+   \   0000026C   55AE               BSR     set_up_input_capture
+    429          
+    430                  set_up_hardware_count();
+   \   0000026E   55BE               BSR     set_up_hardware_count
+    431          }
+   \   00000270   5470               RTS     
+    432          
+    433          
+    434          void beep_for(short t)
+    435          {
+   \                     beep_for:
+   \   00000272   6DF0               PUSH.W  R0
+    436                  if (t < 0)       /* Low freq beep when t negative. */
+   \   00000274   0D66               MOV     R6,R6
+   \   00000276   4C0C               BGE     ?0026
+    437                  {
+    438                          t = -t;
+   \   00000278   1796               NEG.W   R6
+    439                          tpu_tgr4a = BEEP_NORM << 2;
+   \   0000027A   790503E8           MOV.W   #1000,R5
+   \   0000027E   6B85FE98           MOV.W   R5,@0xFFFFFE98
+    440                  }
+    441                  else
+   \   00000282   4008               BRA     ?0027
+   \                     ?0026:
+    442                          tpu_tgr4a = BEEP_NORM;
+   \   00000284   790500FA           MOV.W   #250,R5
+   \   00000288   6B85FE98           MOV.W   R5,@0xFFFFFE98
+   \                     ?0027:
+    443          
+    444                  tpu_tgr4b = tpu_tgr4a >> 1;
+   \   0000028C   6B05FE98           MOV.W   @0xFFFFFE98,R5
+   \   00000290   1115               SHLR.W  R5
+   \   00000292   6B85FE9A           MOV.W   R5,@0xFFFFFE9A
+    445                  tpu_tcnt4 = 0;
+   \   00000296   1955               SUB.W   R5,R5
+   \   00000298   6B85FE96           MOV.W   R5,@0xFFFFFE96
+    446                  wait (t);
+   \   0000029C   17F6               EXTS.L  ER6
+   \   0000029E   5E......           JSR     @wait:24
+    447                  tpu_tgr4b = tpu_tgr4a; /* Off */
+   \   000002A2   6B06FE98           MOV.W   @0xFFFFFE98,R6
+   \   000002A6   6B86FE9A           MOV.W   R6,@0xFFFFFE9A
+    448          }
+   \   000002AA   6D70               POP.W   R0
+   \   000002AC   5470               RTS     
+    449          
+    450                                                                                                           
+    451          
+    452          void beep_period_and_time(short period, short time)
+    453          {
+   \                     beep_period_and_time:
+   \   000002AE   6DF0               PUSH.W  R0
+    454                  tpu_tgr4a = period;
+   \   000002B0   6B86FE98           MOV.W   R6,@0xFFFFFE98
+    455                  tpu_tgr4b = tpu_tgr4a >> 1;
+   \   000002B4   6B06FE98           MOV.W   @0xFFFFFE98,R6
+   \   000002B8   1116               SHLR.W  R6
+   \   000002BA   6B86FE9A           MOV.W   R6,@0xFFFFFE9A
+    456                  tpu_tcnt4 = 0;
+   \   000002BE   1966               SUB.W   R6,R6
+   \   000002C0   6B86FE96           MOV.W   R6,@0xFFFFFE96
+    457                  wait (time);
+   \   000002C4   0D56               MOV.W   R5,R6
+   \   000002C6   17F6               EXTS.L  ER6
+   \   000002C8   5E......           JSR     @wait:24
+    458                  tpu_tgr4b = tpu_tgr4a; /* Off */
+   \   000002CC   6B06FE98           MOV.W   @0xFFFFFE98,R6
+   \   000002D0   6B86FE9A           MOV.W   R6,@0xFFFFFE9A
+    459          }
+   \   000002D4   6D70               POP.W   R0
+   \   000002D6   5470               RTS     
+    460          
+    461          void end_beep()
+    462          {
+   \                     end_beep:
+    463              beep_for(500);
+   \   000002D8   790601F4           MOV.W   #500,R6
+   \   000002DC   5594               BSR     beep_for
+    464          }       
+   \   000002DE   5470               RTS     
+    465          
+    466          void warble(char type)
+    467          {
+   \                     warble:
+   \   000002E0   6DF0               PUSH.W  R0
+    468                  char i;
+    469          
+    470                  switch (type)
+   \   000002E2   AE01               CMP.B   #1,R6L
+   \   000002E4   461E               BNE     ?0034
+    471                  {
+    472                          case 1:
+    473                                  for (i=0; i<5; i++)
+   \   000002E6   1888               SUB.B   R0L,R0L
+   \                     ?0031:
+   \   000002E8   A805               CMP.B   #5,R0L
+   \   000002EA   4460               BCC     ?0040
+    474                                  {
+    475                                          beep_period_and_time(BEEP_NORM,50);
+   \   000002EC   79050032           MOV.W   #50,R5
+   \   000002F0   790600FA           MOV.W   #250,R6
+   \   000002F4   55B8               BSR     beep_period_and_time
+    476                                          beep_period_and_time(BEEP_NORM << 1,50);
+   \   000002F6   79050032           MOV.W   #50,R5
+   \   000002FA   790601F4           MOV.W   #500,R6
+   \   000002FE   55AE               BSR     beep_period_and_time
+   \   00000300   8801               ADD.B   #1,R0L
+    477                                  }
+    478          
+    479                                  break;
+   \   00000302   40E4               BRA     ?0031
+   \                     ?0034:
+   \   00000304   AE02               CMP.B   #2,R6L
+   \   00000306   461E               BNE     ?0039
+    480          
+    481                          case 2:
+    482                                  for (i=0; i<10; i++)
+   \   00000308   1888               SUB.B   R0L,R0L
+   \                     ?0036:
+   \   0000030A   A80A               CMP.B   #10,R0L
+   \   0000030C   443E               BCC     ?0040
+    483                                  {
+    484                                          beep_period_and_time(BEEP_NORM,25);
+   \   0000030E   79050019           MOV.W   #25,R5
+   \   00000312   790600FA           MOV.W   #250,R6
+   \   00000316   5596               BSR     beep_period_and_time
+    485                                          beep_period_and_time(BEEP_NORM << 1,25);
+   \   00000318   79050019           MOV.W   #25,R5
+   \   0000031C   790601F4           MOV.W   #500,R6
+   \   00000320   558C               BSR     beep_period_and_time
+   \   00000322   8801               ADD.B   #1,R0L
+    486                                  }
+    487                                  break;
+   \   00000324   40E4               BRA     ?0036
+   \                     ?0039:
+   \   00000326   AE03               CMP.B   #3,R6L
+   \   00000328   4622               BNE     ?0040
+    488          
+    489                          case 3:
+    490                                  for (i=0; i<1; i++)
+   \   0000032A   1888               SUB.B   R0L,R0L
+   \                     ?0041:
+   \   0000032C   A801               CMP.B   #1,R0L
+   \   0000032E   441C               BCC     ?0040
+    491                                  {
+    492                                          beep_period_and_time(BEEP_NORM << 1,125);
+   \   00000330   7905007D           MOV.W   #125,R5
+   \   00000334   790601F4           MOV.W   #500,R6
+   \   00000338   5C00FF72           BSR     beep_period_and_time
+    493                                          beep_period_and_time(BEEP_NORM,125);
+   \   0000033C   7905007D           MOV.W   #125,R5
+   \   00000340   790600FA           MOV.W   #250,R6
+   \   00000344   5C00FF66           BSR     beep_period_and_time
+   \   00000348   8801               ADD.B   #1,R0L
+    494                                  }
+    495                                  break;
+   \   0000034A   40E0               BRA     ?0041
+   \                     ?0040:
+    496          
+    497                          default:
+    498                                  break;
+    499                  }
+    500          
+    501          }
+   \   0000034C   6D70               POP.W   R0
+   \   0000034E   5470               RTS     
+    502          
+    503          void pip_n_times(char n)
+    504          {
+   \                     pip_n_times:
+   \   00000350   6DF0               PUSH.W  R0
+   \   00000352   0CE8               MOV.B   R6L,R0L
+   \                     ?0035:
+    505                  while (n--)
+   \   00000354   0C8E               MOV.B   R0L,R6L
+   \   00000356   1A08               DEC.B   R0L
+   \   00000358   0CEE               MOV.B   R6L,R6L
+   \   0000035A   4712               BEQ     ?0045
+    506                  {
+    507                          beep_for(100);
+   \   0000035C   79060064           MOV.W   #100,R6
+   \   00000360   5C00FF0E           BSR     beep_for
+    508                          wait (50);
+   \   00000364   1AE6               SUB.L   ER6,ER6
+   \   00000366   FE32               MOV.B   #50,R6L
+   \   00000368   5E......           JSR     @wait:24
+    509                  }
+    510          }                                                          
+   \   0000036C   40E6               BRA     ?0035
+   \                     ?0045:
+   \   0000036E   6D70               POP.W   R0
+   \   00000370   5470               RTS     
+    511          
+    512          
+    513          #define RES_LOW 33000.0 /* The lower arm of the divider. */
+    514          #define RES_HI 100000.0 /* The upper arm of the divider. */
+    515          #define LOW_VOLTAGE     7.0 /* When the battery symbol comes on */
+    516                          
+    517          /* returns the battery voltage in volts. */
+    518          float read_battery()
+    519          {
+   \                     read_battery:
+    520                  float volts;
+    521          
+    522                  //STR("Test analogues\r\n");
+    523          
+    524                  mstpcrh &= 0xFF - ADC_MODULE_STOP; /* Turn on the analogue module */
+   \   00000372   7F3C7210           BCLR    #1,@0xFFFFFF3C
+    525          
+    526                  adcsr = 0;                         /* clear the flags, stop conversions */
+   \   00000376   18EE               SUB.B   R6L,R6L
+   \   00000378   3E98               MOV.B   R6L,@0xFFFFFF98
+    527                  adcsr = ADST + AD_CKS + 0;                 /* start a scanned conversion of first chan group 0-3 */
+   \   0000037A   FE28               MOV.B   #40,R6L
+   \   0000037C   3E98               MOV.B   R6L,@0xFFFFFF98
+   \                     ?0049:
+    528                  while ((adcsr & ADF) == 0)
+   \   0000037E   2E98               MOV.B   @0xFFFFFF98,R6L
+   \   00000380   0CEE               MOV     R6L,R6L
+   \   00000382   4CFA               BGE     ?0049
+    529                          ;                              /* wait for the end */
+    530                  adcsr = 0;                         /* clear the flags, stop conversions */
+   \   00000384   18EE               SUB.B   R6L,R6L
+   \   00000386   3E98               MOV.B   R6L,@0xFFFFFF98
+    531          
+    532                  volts =  addra * (RES_LOW + RES_HI)/ RES_LOW * 5.0 / (1024L*64) ;
+   \   00000388   6B06FF90           MOV.W   @0xFFFFFF90,R6
+   \   0000038C   1776               EXTU.L  ER6
+   \   0000038E   5E......           JSR     @?SL_TO_F_L04
+   \   00000392   7A054801           MOV.L   #1208082944,ER5
+   \            E200    
+   \   00000398   5E......           JSR     @?F_MUL_L04
+   \   0000039C   7A054700           MOV.L   #1191241728,ER5
+   \            E800    
+   \   000003A2   5E......           JSR     @?F_DIV_L04
+   \   000003A6   7A0540A0           MOV.L   #1084227584,ER5
+   \            0000    
+   \   000003AC   5E......           JSR     @?F_MUL_L04
+   \   000003B0   7A054780           MOV.L   #1199570944,ER5
+   \            0000    
+   \   000003B6   5E......           JSR     @?F_DIV_L04
+    533          
+    534                  mstpcrh |= ADC_MODULE_STOP;        /* Turn off the analogue module */
+   \   000003BA   7F3C7010           BSET    #1,@0xFFFFFF3C
+    535          
+    536                  return volts;
+    537          }
+   \   000003BE   5470               RTS     
+    538          
+    539          /* writes threshold volts to the analogue output channel. */
+    540          void write_analogue(char value)
+    541          {
+   \                     write_analogue:
+    542                  mstpcrh &= 0xFF - DAC_MODULE_STOP;      /* Turn on the analogue module */
+   \   000003C0   7F3C7220           BCLR    #2,@0xFFFFFF3C
+    543          
+    544                  /* write conversion data to appropriate data register and */
+    545                  /* enable D/A conversion on appropriate channel; DA1 or DA0 pin becomes an output */
+    546                  dadr1 = value;                                  /* write value to data register 1 */
+   \   000003C4   3EA5               MOV.B   R6L,@0xFFFFFFA5
+    547                  dacr |= DAOE1;                                  /* set DA1 pin to output in control register */
+   \   000003C6   7FA67070           BSET    #7,@0xFFFFFFA6
+    548          
+    549                  mstpcrh |= DAC_MODULE_STOP;             /* Turn off the analogue module */
+   \   000003CA   7F3C7020           BSET    #2,@0xFFFFFF3C
+    550          }
+   \   000003CE   5470               RTS     
+    551          
+    552          
+    553          /* Find the level at which the CMOS gate changes state. */
+    554          char find_thresh()
+    555          {
+   \                     find_thresh:
+   \   000003D0   6DF0               PUSH.W  R0
+    556                  char i;
+    557          
+    558                  write_analogue(0);
+   \   000003D2   18EE               SUB.B   R6L,R6L
+   \   000003D4   55EA               BSR     write_analogue
+   \                     ?0053:
+    559          
+    560                  do /* wait for an value to drop. */ /* KL: could wait forever here  !!! */
+    561                  {
+    562                          wait (20);
+   \   000003D6   1AE6               SUB.L   ER6,ER6
+   \   000003D8   FE14               MOV.B   #20,R6L
+   \   000003DA   5E......           JSR     @wait:24
+    563                  } while (port1 & BIT0);
+   \   000003DE   7E507300           BTST    #0,@0xFFFFFF50
+   \   000003E2   46F2               BNE     ?0053
+    564                  
+    565          
+    566                  for (i=120; i < 220; i++)
+   \   000003E4   F878               MOV.B   #120,R0L
+   \                     ?0055:
+   \   000003E6   A8DC               CMP.B   #220,R0L
+   \   000003E8   4416               BCC     ?0054
+    567                  {
+    568                          write_analogue(i);
+   \   000003EA   0C8E               MOV.B   R0L,R6L
+   \   000003EC   55D2               BSR     write_analogue
+    569                          wait (2);
+   \   000003EE   1AE6               SUB.L   ER6,ER6
+   \   000003F0   FE02               MOV.B   #2,R6L
+   \   000003F2   5E......           JSR     @wait:24
+    570                          if (port1 & BIT0)
+   \   000003F6   7E507300           BTST    #0,@0xFFFFFF50
+   \   000003FA   4604               BNE     ?0054
+    571                                  break;
+   \   000003FC   8801               ADD.B   #1,R0L
+   \   000003FE   40E6               BRA     ?0055
+   \                     ?0054:
+    572                  }
+    573                  return i;
+   \   00000400   0C8E               MOV.B   R0L,R6L
+    574                  
+    575          }       
+   \   00000402   6D70               POP.W   R0
+   \   00000404   5470               RTS     
+    576          
+    577          
+    578          /* Find the level at which the CMOS gate changes state:
+    579                  do it several times and get the average, then subtract
+    580                  some to get out of the noisy region.
+    581          */
+    582          void setup_threshold()
+    583          {       char i;
+   \                     setup_threshold:
+   \   00000406   6DF0               PUSH.W  R0
+   \   00000408   6DF1               PUSH.W  R1
+    584                  short sum = 0;
+    585          
+    586          //long t1; 
+    587          //STR("find thr\r\n");
+    588          //t1 = time_low;
+    589          
+    590                  #define THRESHOLD_SAMPLES 3       /* No. of times we try to get the samples. */
+    591                  #define THRESHOLD_HEADROOM 20 /* How far below the CMOS gate threshold we set the level. */
+    592                  for (i=0; i < THRESHOLD_SAMPLES ; i++ )
+   \   0000040A   1900               SUB.W   R0,R0
+   \   0000040C   1899               SUB.B   R1L,R1L
+   \                     ?0061:
+   \   0000040E   A903               CMP.B   #3,R1L
+   \   00000410   440A               BCC     ?0060
+    593                  {
+    594                          sum += find_thresh();
+   \   00000412   55BC               BSR     find_thresh
+   \   00000414   1756               EXTU.W  R6
+   \   00000416   0960               ADD.W   R6,R0
+   \   00000418   8901               ADD.B   #1,R1L
+   \   0000041A   40F2               BRA     ?0061
+   \                     ?0060:
+    595                  }
+    596                  sum  /= THRESHOLD_SAMPLES;
+   \   0000041C   79060003           MOV.W   #3,R6
+   \   00000420   0D05               MOV.W   R0,R5
+   \   00000422   17F5               EXTS.L  ER5
+   \   00000424   01D05365           DIVXS.W R6,ER5
+   \   00000428   0D50               MOV.W   R5,R0
+    597          
+    598          //PRINT "threshold took ms to measure %li\r\n",time_low - t1 PREND
+    599          
+    600                  /* Set the threshold we want. */
+    601                  write_analogue(sum - THRESHOLD_HEADROOM);
+   \   0000042A   0C8E               MOV.B   R0L,R6L
+   \   0000042C   8EEC               ADD.B   #236,R6L
+   \   0000042E   5590               BSR     write_analogue
+    602          
+    603          //PRINT "set thr at %i\r\n",sum - THRESHOLD_HEADROOM PREND
+    604          }       
+   \   00000430   6D71               POP.W   R1
+   \   00000432   6D70               POP.W   R0
+   \   00000434   5470               RTS     
+    605                  
+    606          
+    607          
+    608          
+    609          timer menu_timer;
+    610          timer therapy_timer;
+    611          timer power_off_timer;
+    612          timer display_timer;
+    613          
+    614          
+    615          #pragma memory=near
+    616          short seconds,last_seconds;
+    617          
+    618          short this_width = 0; 
+    619          short last_width = 0; 
+    620          short initial_width = 0; 
+    621          short delta_width;
+    622          //short filtered_width;
+    623          signed char response = 0;
+    624          
+    625          unsigned short init_plus_percent;
+    626          unsigned short init_plus_50;                 
+    627          
+    628          
+    629          char dose = 0;
+    630          
+    631          char delta_flattened_count = 0;
+    632          
+    633          
+    634          short rate1 = 0;
+    635          short initial_rate = 0;
+    636          long milliseconds;
+    637          
+    638          
+    639          char skin_display = 0;
+    640          char freeze_display = 0; /* Flag to freeze the display, also indicates the warble to use. */
+    641          
+    642          char no_reading_count = 0;
+    643          
+    644          #pragma memory=default
+    645          
+    646          
+    647          #define FIFO_LENGTH 15
+    648          short fifo[FIFO_LENGTH];   
+    649          
+    650           
+    651          
+    652          
+    653          #define PULSE_SKIN_THRESHOLD (15)
+    654          
+    655          /* Called every (30?) milliseconds round the main loop in each menu to control
+    656           and monitor the pulse therapy. */
+    657          void therapy_control()
+    658          {
+   \                     therapy_control:
+    659                  char i;
+    660          
+    661          
+    662                  /* calcuate pulse readings */
+    663          
+    664                  if (data_dest[1] > 999 || n_rings <= 2) /* Detect unreadable signals */
+   \   00000436   6B06....           MOV.W   @data_dest+2:16,R6
+   \   0000043A   792603E7           CMP.W   #999,R6
+   \   0000043E   4208               BHI     ?0066
+   \   00000440   6A0E....           MOV.B   @n_rings:16,R6L
+   \   00000444   AE02               CMP.B   #2,R6L
+   \   00000446   421E               BHI     ?0065
+   \                     ?0066:
+    665              {
+    666                          if (no_reading_count < NO_READING_COUNT)
+   \   00000448   6A0E....           MOV.B   @no_reading_count:16,R6L
+   \   0000044C   AE14               CMP.B   #20,R6L
+   \   0000044E   441E               BCC     ?0072
+    667                          {
+    668                                  no_reading_count++;
+   \   00000450   6A0E....           MOV.B   @no_reading_count:16,R6L
+   \   00000454   8E01               ADD.B   #1,R6L
+   \   00000456   6A8E....           MOV.B   R6L,@no_reading_count:16
+    669                                  if (no_reading_count == NO_READING_COUNT) /* [Occurs once only] */
+   \   0000045A   AE14               CMP.B   #20,R6L
+   \   0000045C   4610               BNE     ?0072
+    670                                  {
+    671                                  freeze_display = 3;
+   \   0000045E   FE03               MOV.B   #3,R6L
+   \   00000460   6A8E....           MOV.B   R6L,@freeze_display:16
+    672                                  }
+    673                          }
+    674              }
+    675              else  /* Readable. */
+   \   00000464   4008               BRA     ?0072
+   \                     ?0065:
+    676                  {
+    677                  this_width = data_dest[1] ;             
+   \   00000466   6B06....           MOV.W   @data_dest+2:16,R6
+   \   0000046A   6B86....           MOV.W   R6,@this_width:16
+   \                     ?0072:
+    678                  }
+    679          
+    680                  if (data_dest[1] > PULSE_SKIN_THRESHOLD)
+   \   0000046E   6B06....           MOV.W   @data_dest+2:16,R6
+   \   00000472   7926000F           CMP.W   #15,R6
+   \   00000476   4324               BLS     ?0074
+    681                  {
+    682                          skin_display = TRUE;
+   \   00000478   FE01               MOV.B   #1,R6L
+   \   0000047A   6A8E....           MOV.B   R6L,@skin_display:16
+    683          
+    684                          if (!stop_watch_going(&therapy_timer))
+   \   0000047E   01006B26           MOV.L   @therapy_timer+6:32,ER6
+   \            ........
+   \   00000486   4670               BNE     ?0077
+    685                          {
+    686                                  stop_watch_start(&therapy_timer);
+   \   00000488   7A06....           MOV.L   #therapy_timer,ER6
+   \            ....    
+   \   0000048E   5E......           JSR     @stop_watch_start:24
+    687                                  beep_for(5);
+   \   00000492   79060005           MOV.W   #5,R6
+   \   00000496   5C00FDD8           BSR     beep_for
+    688                          }
+    689          
+    690                  }
+    691                  else /* Off skin... */
+   \   0000049A   405C               BRA     ?0077
+   \                     ?0074:
+    692                  {
+    693                          /* Therapy time record. */
+    694                          if (skin_display)
+   \   0000049C   6A0E....           MOV.B   @skin_display:16,R6L
+   \   000004A0   4714               BEQ     ?0079
+    695                                  param.acc_ther_time += seconds;
+   \   000004A2   6B06....           MOV.W   @seconds:16,R6
+   \   000004A6   17F6               EXTS.L  ER6
+   \   000004A8   01006B05           MOV.L   @param:16,ER5
+   \            ....    
+   \   000004AE   0AE5               ADD.L   ER6,ER5
+   \   000004B0   01006B85           MOV.L   ER5,@param:16
+   \            ....    
+   \                     ?0079:
+    696          
+    697                          skin_display = FALSE;
+   \   000004B6   18EE               SUB.B   R6L,R6L
+   \   000004B8   6A8E....           MOV.B   R6L,@skin_display:16
+    698          
+    699                          no_reading_count = 0;
+   \   000004BC   6A8E....           MOV.B   R6L,@no_reading_count:16
+    700          
+    701          
+    702                          stop_watch_stop(&therapy_timer);
+   \   000004C0   1AE6               SUB.L   ER6,ER6
+   \   000004C2   01006BA6           MOV.L   ER6,@therapy_timer+6:32
+   \            ........
+    703                          last_width = this_width;
+   \   000004CA   6B06....           MOV.W   @this_width:16,R6
+   \   000004CE   6B86....           MOV.W   R6,@last_width:16
+    704                          last_seconds = 0;
+   \   000004D2   1966               SUB.W   R6,R6
+   \   000004D4   6B86....           MOV.W   R6,@last_seconds:16
+    705                          initial_width = 0;
+   \   000004D8   6B86....           MOV.W   R6,@initial_width:16
+    706                  dose = 0;
+   \   000004DC   6A8E....           MOV.B   R6L,@dose:16
+    707                          delta_flattened_count = 0;
+   \   000004E0   6A8E....           MOV.B   R6L,@delta_flattened_count:16
+    708                          delta_width = 0;
+   \   000004E4   6B86....           MOV.W   R6,@delta_width:16
+    709                                  
+    710                          rate1 = 0;
+   \   000004E8   6B86....           MOV.W   R6,@rate1:16
+    711                          initial_rate = 0;
+   \   000004EC   6B86....           MOV.W   R6,@initial_rate:16
+    712                          initital_rings = 0;
+   \   000004F0   6A8E....           MOV.B   R6L,@initital_rings:16
+    713          
+    714                          response = 0;
+   \   000004F4   6A8E....           MOV.B   R6L,@response:16
+   \                     ?0077:
+    715          
+    716                  }
+    717          
+    718          
+    719                  seconds = stop_watch_seconds(&therapy_timer);
+   \   000004F8   7A06....           MOV.L   #therapy_timer,ER6
+   \            ....    
+   \   000004FE   5E......           JSR     @stop_watch_seconds:24
+   \   00000502   6B86....           MOV.W   R6,@seconds:16
+    720          
+    721          
+    722                  /* Dont do any of the calculations/alarms if we have these things set... */
+    723                  if (param.filter || param.modulation || param.freq_cycling)
+   \   00000506   6A0E....           MOV.B   @param+15:16,R6L
+   \   0000050A   58600220           BNE     ?0126
+   \   0000050E   6A0E....           MOV.B   @param+14:16,R6L
+   \   00000512   58600218           BNE     ?0126
+   \   00000516   6A0E....           MOV.B   @param+16:16,R6L
+   \   0000051A   4702               BEQ     ?0081
+   \   0000051C   5470               RTS     
+   \                     ?0081:
+    724                          return;
+    725                          
+    726              if (no_reading_count >= NO_READING_COUNT)
+   \   0000051E   6A0E....           MOV.B   @no_reading_count:16,R6L
+   \   00000522   AE14               CMP.B   #20,R6L
+   \   00000524   58400206           BCC     ?0126
+    727              {
+    728                  return ;
+    729              }
+    730          
+    731                  
+    732              /* This code is executed once a second, every time a second rolls over. */
+    733                  if (seconds != last_seconds)
+   \   00000528   6B06....           MOV.W   @seconds:16,R6
+   \   0000052C   6B05....           MOV.W   @last_seconds:16,R5
+   \   00000530   1D56               CMP.W   R5,R6
+   \   00000532   587000D2           BEQ     ?0087
+    734                  {
+    735                          for (i = FIFO_LENGTH-1; i  ; i--)
+   \   00000536   FD0E               MOV.B   #14,R5L
+   \                     ?0089:
+   \   00000538   0CDD               MOV.B   R5L,R5L
+   \   0000053A   4724               BEQ     ?0088
+    736                          {
+    737                                   fifo[i] = fifo[i-1];
+   \   0000053C   0CDE               MOV.B   R5L,R6L
+   \   0000053E   1756               EXTU.W  R6
+   \   00000540   1096               SHAL.W  R6
+   \   00000542   17F6               EXTS.L  ER6
+   \   00000544   78606B2D           MOV.W   @(fifo-2:32,ER6),E5
+   \            ........
+   \   0000054C   0CDE               MOV.B   R5L,R6L
+   \   0000054E   1756               EXTU.W  R6
+   \   00000550   1096               SHAL.W  R6
+   \   00000552   17F6               EXTS.L  ER6
+   \   00000554   78606BAD           MOV.W   E5,@(fifo:32,ER6)
+   \            ........
+   \   0000055C   8DFF               ADD.B   #-1,R5L
+   \   0000055E   40D8               BRA     ?0089
+   \                     ?0088:
+    738                          }
+    739                          fifo[0] = this_width;
+   \   00000560   6B06....           MOV.W   @this_width:16,R6
+   \   00000564   6BA6....           MOV.W   R6,@fifo:32
+   \            ....    
+    740          
+    741          
+    742                          /* Average the start and end of the fifo to filter d/t */
+    743                          delta_width = ((   fifo[0]
+    744                                                      + fifo[1]
+    745                                                      + fifo[2]
+    746                                                      + fifo[3]
+    747                                                      + fifo[4]
+    748                                                    )
+    749                                                    - 
+    750                                                    (   fifo[FIFO_LENGTH-1] 
+    751                                                      + fifo[FIFO_LENGTH-2] 
+    752                                                      + fifo[FIFO_LENGTH-3]
+    753                                                      + fifo[FIFO_LENGTH-4]
+    754                                                      + fifo[FIFO_LENGTH-5]
+    755                                                    )) / 5;
+   \   0000056A   6B25....           MOV.W   @fifo+2:32,R5
+   \            ....    
+   \   00000570   0956               ADD.W   R5,R6
+   \   00000572   6B25....           MOV.W   @fifo+4:32,R5
+   \            ....    
+   \   00000578   0956               ADD.W   R5,R6
+   \   0000057A   6B25....           MOV.W   @fifo+6:32,R5
+   \            ....    
+   \   00000580   0956               ADD.W   R5,R6
+   \   00000582   6B25....           MOV.W   @fifo+8:32,R5
+   \            ....    
+   \   00000588   0956               ADD.W   R5,R6
+   \   0000058A   6B25....           MOV.W   @fifo+28:32,R5
+   \            ....    
+   \   00000590   6B2E....           MOV.W   @fifo+26:32,E6
+   \            ....    
+   \   00000596   09E5               ADD.W   E6,R5
+   \   00000598   6B2E....           MOV.W   @fifo+24:32,E6
+   \            ....    
+   \   0000059E   09E5               ADD.W   E6,R5
+   \   000005A0   6B2E....           MOV.W   @fifo+22:32,E6
+   \            ....    
+   \   000005A6   09E5               ADD.W   E6,R5
+   \   000005A8   6B2E....           MOV.W   @fifo+20:32,E6
+   \            ....    
+   \   000005AE   09E5               ADD.W   E6,R5
+   \   000005B0   1956               SUB.W   R5,R6
+   \   000005B2   79050005           MOV.W   #5,R5
+   \   000005B6   17F6               EXTS.L  ER6
+   \   000005B8   01D05356           DIVXS.W R5,ER6
+   \   000005BC   6B86....           MOV.W   R6,@delta_width:16
+    756          
+    757                          /* Ring if delta is zero or less for 2 seconds */
+    758                          if (delta_width <= 0 /* && !delta_flattened */)
+   \   000005C0   0D66               MOV     R6,R6
+   \   000005C2   4E1E               BGT     ?0093
+    759                          {
+    760                                  if (delta_flattened_count++ >= 2)
+   \   000005C4   6A0E....           MOV.B   @delta_flattened_count:16,R6L
+   \   000005C8   0A0E               INC.B   R6L
+   \   000005CA   6A8E....           MOV.B   R6L,@delta_flattened_count:16
+   \   000005CE   1A0E               DEC.B   R6L
+   \   000005D0   AE02               CMP.B   #2,R6L
+   \   000005D2   4514               BCS     ?0096
+    761                                  {
+    762                                  freeze_display = 2;
+   \   000005D4   FE02               MOV.B   #2,R6L
+   \   000005D6   6A8E....           MOV.B   R6L,@freeze_display:16
+    763                                          delta_flattened_count = 0;      
+   \   000005DA   18EE               SUB.B   R6L,R6L
+   \   000005DC   6A8E....           MOV.B   R6L,@delta_flattened_count:16
+    764                                  }
+    765                          }
+    766                          else
+   \   000005E0   4006               BRA     ?0096
+   \                     ?0093:
+    767                          {
+    768                             delta_flattened_count = 0;   
+   \   000005E2   18EE               SUB.B   R6L,R6L
+   \   000005E4   6A8E....           MOV.B   R6L,@delta_flattened_count:16
+   \                     ?0096:
+    769                          }
+    770          
+    771                  /* Calcuate the response. */
+    772                          if (seconds == RESPONSE_WAIT)
+   \   000005E8   6B06....           MOV.W   @seconds:16,R6
+   \   000005EC   79260005           CMP.W   #5,R6
+   \   000005F0   460E               BNE     ?0098
+    773                          {
+    774                                  response = this_width - initial_width ;
+   \   000005F2   6A0E....           MOV.B   @this_width+1:16,R6L
+   \   000005F6   6A06....           MOV.B   @initial_width+1:16,R6H
+   \   000005FA   186E               SUB.B   R6H,R6L
+   \   000005FC   6A8E....           MOV.B   R6L,@response:16
+   \                     ?0098:
+    775                          }
+    776          
+    777                          last_seconds = seconds;
+   \   00000600   6B06....           MOV.W   @seconds:16,R6
+   \   00000604   6B86....           MOV.W   R6,@last_seconds:16
+   \                     ?0087:
+    778                  }
+    779          
+    780          
+    781          
+    782          
+    783                  milliseconds = stop_watch_time(&therapy_timer);  /* Could be read above! */
+   \   00000608   7A06....           MOV.L   #therapy_timer,ER6
+   \            ....    
+   \   0000060E   5E......           JSR     @stop_watch_time:24
+   \   00000612   01006B86           MOV.L   ER6,@milliseconds:16
+   \            ....    
+    784          
+    785              /* We haven't found the initial width yet: */
+    786              if (initial_width == 0)
+   \   00000618   6B06....           MOV.W   @initial_width:16,R6
+   \   0000061C   586000CA           BNE     ?0102
+    787              {
+    788          
+    789                  /* Init width is taken after fixed no. of milliseconds: */
+    790                          if (milliseconds > 500)
+   \   00000620   01006B06           MOV.L   @milliseconds:16,ER6
+   \            ....    
+   \   00000626   7A260000           CMP.L   #500,ER6
+   \            01F4    
+   \   0000062C   58F000BA           BLE     ?0102
+    791                          {
+    792                                  initial_width = this_width; /* Set the init width. */
+   \   00000630   6B06....           MOV.W   @this_width:16,R6
+   \   00000634   6B86....           MOV.W   R6,@initial_width:16
+    793                                  initital_rings = n_rings >> 1;  /* Set the init rings */
+   \   00000638   6A0E....           MOV.B   @n_rings:16,R6L
+   \   0000063C   110E               SHLR.B  R6L
+   \   0000063E   6A8E....           MOV.B   R6L,@initital_rings:16
+    794          
+    795                                  /* INIT fifo */
+    796                                  for (i = 0; i<FIFO_LENGTH  ; i++ )
+   \   00000642   18DD               SUB.B   R5L,R5L
+   \                     ?0104:
+   \   00000644   AD0F               CMP.B   #15,R5L
+   \   00000646   4418               BCC     ?0103
+    797                                  {
+    798                                           fifo[i] = initial_width;
+   \   00000648   6B0D....           MOV.W   @initial_width:16,E5
+   \   0000064C   0CDE               MOV.B   R5L,R6L
+   \   0000064E   1756               EXTU.W  R6
+   \   00000650   1096               SHAL.W  R6
+   \   00000652   17F6               EXTS.L  ER6
+   \   00000654   78606BAD           MOV.W   E5,@(fifo:32,ER6)
+   \            ........
+   \   0000065C   8D01               ADD.B   #1,R5L
+   \   0000065E   40E4               BRA     ?0104
+   \                     ?0103:
+    799                                  }
+    800           
+    801                      /* Calculate some Dose figures: */
+    802                                  init_plus_50 =  initial_width * 3 / 2;
+   \   00000660   6B05....           MOV.W   @initial_width:16,R5
+   \   00000664   79060003           MOV.W   #3,R6
+   \   00000668   5256               MULXU.W R5,ER6
+   \   0000066A   79050002           MOV.W   #2,R5
+   \   0000066E   17F6               EXTS.L  ER6
+   \   00000670   01D05356           DIVXS.W R5,ER6
+   \   00000674   6B86....           MOV.W   R6,@init_plus_50:16
+    803          
+    804                      if (initial_width <= 40)
+   \   00000678   6B06....           MOV.W   @initial_width:16,R6
+   \   0000067C   79260028           CMP.W   #40,R6
+   \   00000680   4E10               BGT     ?0108
+    805                      {
+    806                         init_plus_percent = initial_width * 35; 
+   \   00000682   6B05....           MOV.W   @initial_width:16,R5
+   \   00000686   79060023           MOV.W   #35,R6
+   \   0000068A   5256               MULXU.W R5,ER6
+   \   0000068C   6B86....           MOV.W   R6,@init_plus_percent:16
+   \   00000690   4042               BRA     ?0115
+   \                     ?0108:
+    807                      }
+    808                      else if (initial_width <= 60)
+   \   00000692   6B06....           MOV.W   @initial_width:16,R6
+   \   00000696   7926003C           CMP.W   #60,R6
+   \   0000069A   4E10               BGT     ?0111
+    809                      {
+    810                         init_plus_percent = initial_width * 25; 
+   \   0000069C   6B05....           MOV.W   @initial_width:16,R5
+   \   000006A0   79060019           MOV.W   #25,R6
+   \   000006A4   5256               MULXU.W R5,ER6
+   \   000006A6   6B86....           MOV.W   R6,@init_plus_percent:16
+   \   000006AA   4028               BRA     ?0115
+   \                     ?0111:
+    811                      }
+    812                      else if (initial_width <= 80)
+   \   000006AC   6B06....           MOV.W   @initial_width:16,R6
+   \   000006B0   79260050           CMP.W   #80,R6
+   \   000006B4   4E10               BGT     ?0114
+    813                      {
+    814                         init_plus_percent = initial_width * 10; 
+   \   000006B6   6B05....           MOV.W   @initial_width:16,R5
+   \   000006BA   7906000A           MOV.W   #10,R6
+   \   000006BE   5256               MULXU.W R5,ER6
+   \   000006C0   6B86....           MOV.W   R6,@init_plus_percent:16
+    815                      }
+    816                      else 
+   \   000006C4   400E               BRA     ?0115
+   \                     ?0114:
+    817                      {
+    818                         init_plus_percent = initial_width * 5; 
+   \   000006C6   6B05....           MOV.W   @initial_width:16,R5
+   \   000006CA   79060005           MOV.W   #5,R6
+   \   000006CE   5256               MULXU.W R5,ER6
+   \   000006D0   6B86....           MOV.W   R6,@init_plus_percent:16
+   \                     ?0115:
+    819                      }
+    820                      init_plus_percent = initial_width + init_plus_percent / 100;
+   \   000006D4   6B06....           MOV.W   @init_plus_percent:16,R6
+   \   000006D8   79050064           MOV.W   #100,R5
+   \   000006DC   1776               EXTU.L  ER6
+   \   000006DE   5356               DIVXU.W R5,ER6
+   \   000006E0   6B05....           MOV.W   @initial_width:16,R5
+   \   000006E4   0956               ADD.W   R5,R6
+   \   000006E6   6B86....           MOV.W   R6,@init_plus_percent:16
+   \                     ?0102:
+    821                             
+    822                          }
+    823              }
+    824          
+    825              if (initial_width && !dose)
+   \   000006EA   6B06....           MOV.W   @initial_width:16,R6
+   \   000006EE   473E               BEQ     ?0126
+   \   000006F0   6A0E....           MOV.B   @dose:16,R6L
+   \   000006F4   4638               BNE     ?0126
+    826              {
+    827                  if (this_width >= init_plus_50 )
+   \   000006F6   6B06....           MOV.W   @this_width:16,R6
+   \   000006FA   6B05....           MOV.W   @init_plus_50:16,R5
+   \   000006FE   1D56               CMP.W   R5,R6
+   \   00000700   450C               BCS     ?0121
+    828                  {
+    829                      dose = 1;
+   \   00000702   FE01               MOV.B   #1,R6L
+   \   00000704   6A8E....           MOV.B   R6L,@dose:16
+    830                      freeze_display = 1;
+   \   00000708   6A8E....           MOV.B   R6L,@freeze_display:16
+   \   0000070C   5470               RTS     
+   \                     ?0121:
+    831                  }
+    832                  else if (seconds >= 10)
+   \   0000070E   6B06....           MOV.W   @seconds:16,R6
+   \   00000712   7926000A           CMP.W   #10,R6
+   \   00000716   4D16               BLT     ?0126
+    833                  {
+    834                      if (this_width >= init_plus_percent)
+   \   00000718   6B06....           MOV.W   @this_width:16,R6
+   \   0000071C   6B05....           MOV.W   @init_plus_percent:16,R5
+   \   00000720   1D56               CMP.W   R5,R6
+   \   00000722   450A               BCS     ?0126
+    835                      {
+    836                              dose = 1;
+   \   00000724   FE01               MOV.B   #1,R6L
+   \   00000726   6A8E....           MOV.B   R6L,@dose:16
+    837                          freeze_display = 1;
+   \   0000072A   6A8E....           MOV.B   R6L,@freeze_display:16
+   \                     ?0126:
+    838                      }
+    839                  }
+    840              }
+    841          }
+   \   0000072E   5470               RTS     
+    842          
+    843          
+    844          
+    845          
+    846          
+    847          timer modulation_timer;
+    848          
+    849          
+    850          /* Does both strength and frequency modulation. */
+    851          void modulate()
+    852          {
+   \                     modulate:
+    853          
+    854          #define RAMP_UP         0
+    855          #define RAMPED_UP       1
+    856          #define RAMP_DOWN       2
+    857          #define RAMPED_DOWN     3
+    858                  
+    859                  if (param.modulation)
+   \   00000730   6A0E....           MOV.B   @param+14:16,R6L
+   \   00000734   587000BA           BEQ     ?0129
+    860                  {
+    861                          if (ramping == RAMP_UP)
+   \   00000738   6A0E....           MOV.B   @ramping:16,R6L
+   \   0000073C   4648               BNE     ?0131
+    862                          {
+    863                                  if (modulated_amp < param.strength)
+   \   0000073E   6B06....           MOV.W   @modulated_amp:16,R6
+   \   00000742   6B05....           MOV.W   @param+8:16,R5
+   \   00000746   1D56               CMP.W   R5,R6
+   \   00000748   4C14               BGE     ?0133
+    864                                  {
+    865                                          modulated_amp++;
+   \   0000074A   6B06....           MOV.W   @modulated_amp:16,R6
+   \   0000074E   0B56               INC.W   #1,R6
+   \   00000750   6B86....           MOV.W   R6,@modulated_amp:16
+    866                                          set_pulse_width(modulated_amp);
+   \   00000754   6A0E....           MOV.B   @modulated_amp+1:16,R6L
+   \   00000758   5C00FA28           BSR     set_pulse_width
+    867                                  }
+    868                                  else
+   \   0000075C   5470               RTS     
+   \                     ?0133:
+    869                                  {
+    870                                          ramping = RAMPED_UP;
+   \   0000075E   FE01               MOV.B   #1,R6L
+   \   00000760   6A8E....           MOV.B   R6L,@ramping:16
+    871                                          modulation_timer.period = param.modulation * 1000;
+   \   00000764   6A0D....           MOV.B   @param+14:16,R5L
+   \   00000768   1755               EXTU.W  R5
+   \   0000076A   790603E8           MOV.W   #1000,R6
+   \   0000076E   5256               MULXU.W R5,ER6
+   \   00000770   17F6               EXTS.L  ER6
+   \   00000772   01006BA6           MOV.L   ER6,@modulation_timer+6:32
+   \            ........
+    872                                          timer_go(&modulation_timer);
+   \   0000077A   7A06....           MOV.L   #modulation_timer,ER6
+   \            ....    
+   \   00000780   5E......           JSR     @timer_go:24
+   \   00000784   5470               RTS     
+   \                     ?0131:
+    873                                  }
+    874                          }
+    875                          else if (ramping == RAMP_DOWN)
+   \   00000786   6A0E....           MOV.B   @ramping:16,R6L
+   \   0000078A   AE02               CMP.B   #2,R6L
+   \   0000078C   463E               BNE     ?0137
+    876                          {
+    877                                  if (modulated_amp > STRENGTH_MIN)
+   \   0000078E   6B06....           MOV.W   @modulated_amp:16,R6
+   \   00000792   7926000A           CMP.W   #10,R6
+   \   00000796   4F14               BLE     ?0139
+    878                                  {
+    879                                          modulated_amp--;
+   \   00000798   6B06....           MOV.W   @modulated_amp:16,R6
+   \   0000079C   1B56               DEC.W   #1,R6
+   \   0000079E   6B86....           MOV.W   R6,@modulated_amp:16
+    880                                          set_pulse_width(modulated_amp);
+   \   000007A2   6A0E....           MOV.B   @modulated_amp+1:16,R6L
+   \   000007A6   5C00F9DA           BSR     set_pulse_width
+    881                                  }
+    882                                  else
+   \   000007AA   5470               RTS     
+   \                     ?0139:
+    883                                  {
+    884                                          ramping = RAMPED_DOWN;
+   \   000007AC   FE03               MOV.B   #3,R6L
+   \   000007AE   6A8E....           MOV.B   R6L,@ramping:16
+    885                                          modulation_timer.period = 1000;
+   \   000007B2   7A060000           MOV.L   #1000,ER6
+   \            03E8    
+   \   000007B8   01006BA6           MOV.L   ER6,@modulation_timer+6:32
+   \            ........
+    886                                          timer_go(&modulation_timer);
+   \   000007C0   7A06....           MOV.L   #modulation_timer,ER6
+   \            ....    
+   \   000007C6   5E......           JSR     @timer_go:24
+    887                                  }
+    888                          }
+    889                          /* Not ramping - waiting... */
+    890                          else    
+   \   000007CA   5470               RTS     
+   \                     ?0137:
+    891                          {
+    892                      if (timer_done(&modulation_timer))
+   \   000007CC   7A06....           MOV.L   #modulation_timer,ER6
+   \            ....    
+   \   000007D2   5E......           JSR     @timer_done:24
+   \   000007D6   0CEE               MOV.B   R6L,R6L
+   \   000007D8   4766               BEQ     ?0151
+    893                      {
+    894                                      ramping = (ramping == RAMPED_UP)? RAMP_DOWN : RAMP_UP;
+   \   000007DA   6A0E....           MOV.B   @ramping:16,R6L
+   \   000007DE   AE01               CMP.B   #1,R6L
+   \   000007E0   4608               BNE     ?0145
+   \   000007E2   FE02               MOV.B   #2,R6L
+   \   000007E4   6A8E....           MOV.B   R6L,@ramping:16
+   \   000007E8   5470               RTS     
+   \                     ?0145:
+   \   000007EA   18EE               SUB.B   R6L,R6L
+   \   000007EC   6A8E....           MOV.B   R6L,@ramping:16
+   \   000007F0   5470               RTS     
+   \                     ?0129:
+    895                      }
+    896                          }
+    897                  }
+    898                  else if (param.freq_cycling)
+   \   000007F2   6A0E....           MOV.B   @param+16:16,R6L
+   \   000007F6   4748               BEQ     ?0151
+    899                  {
+    900                          if ( (mod_counter++ & 1) == 0)  /* Every other time... */
+   \   000007F8   6A0E....           MOV.B   @mod_counter:16,R6L
+   \   000007FC   0A0E               INC.B   R6L
+   \   000007FE   6A8E....           MOV.B   R6L,@mod_counter:16
+   \   00000802   1A0E               DEC.B   R6L
+   \   00000804   730E               BTST    #0,R6L
+   \   00000806   4638               BNE     ?0151
+    901                          {
+    902                                  if (ramping == RAMP_UP) 
+   \   00000808   6A0E....           MOV.B   @ramping:16,R6L
+   \   0000080C   4618               BNE     ?0153
+    903                                  {
+    904                                          frequency++;
+   \   0000080E   6B06....           MOV.W   @frequency:16,R6
+   \   00000812   0B56               INC.W   #1,R6
+   \   00000814   6B86....           MOV.W   R6,@frequency:16
+    905          
+    906                                          if (frequency >= MOD_FREQ_MAX)
+   \   00000818   79260078           CMP.W   #120,R6
+   \   0000081C   4D1E               BLT     ?0158
+    907                                                  ramping = RAMP_DOWN;
+   \   0000081E   FE02               MOV.B   #2,R6L
+   \   00000820   6A8E....           MOV.B   R6L,@ramping:16
+    908          
+    909                                  }
+    910                                  else
+   \   00000824   4016               BRA     ?0158
+   \                     ?0153:
+    911                                  {
+    912                                          frequency--;
+   \   00000826   6B06....           MOV.W   @frequency:16,R6
+   \   0000082A   1B56               DEC.W   #1,R6
+   \   0000082C   6B86....           MOV.W   R6,@frequency:16
+    913          
+    914                                          if (frequency <= MOD_FREQ_MIN)
+   \   00000830   7926001E           CMP.W   #30,R6
+   \   00000834   4E06               BGT     ?0158
+    915                                                  ramping = RAMP_UP;
+   \   00000836   18EE               SUB.B   R6L,R6L
+   \   00000838   6A8E....           MOV.B   R6L,@ramping:16
+   \                     ?0158:
+    916                                  }
+    917                                  set_pulse_period();
+   \   0000083C   5C00F952           BSR     set_pulse_period
+   \                     ?0151:
+    918                          }
+    919                  }
+    920          }       
+   \   00000840   5470               RTS     
+    921          
+    922          
+    923          /* Set the modulation state machine to a start state. */
+    924          void reset_modulation()
+    925          {
+   \                     reset_modulation:
+    926                  modulation_timer.period = 500; /* How long modulation takes to get started. */
+   \   00000842   7A060000           MOV.L   #500,ER6
+   \            01F4    
+   \   00000848   01006BA6           MOV.L   ER6,@modulation_timer+6:32
+   \            ........
+    927                  ramping = RAMPED_UP;    
+   \   00000850   FE01               MOV.B   #1,R6L
+   \   00000852   6A8E....           MOV.B   R6L,@ramping:16
+    928                  modulated_amp = param.strength;
+   \   00000856   6B06....           MOV.W   @param+8:16,R6
+   \   0000085A   6B86....           MOV.W   R6,@modulated_amp:16
+    929                  timer_go(&modulation_timer);
+   \   0000085E   7A06....           MOV.L   #modulation_timer,ER6
+   \            ....    
+   \   00000864   5E......           JSR     @timer_go:24
+    930          }
+   \   00000868   5470               RTS     
+    931          
+    932          void freq_cycling_off()
+    933          {
+   \                     freq_cycling_off:
+    934                  param.freq_cycling = FALSE; 
+   \   0000086A   18EE               SUB.B   R6L,R6L
+   \   0000086C   6A8E....           MOV.B   R6L,@param+16:16
+    935                  frequency = param.base_freq;
+   \   00000870   6B06....           MOV.W   @param+10:16,R6
+   \   00000874   6B86....           MOV.W   R6,@frequency:16
+    936                  set_pulse_period();
+   \   00000878   5C00F916           BSR     set_pulse_period
+    937          }       
+   \   0000087C   5470               RTS     
+    938          
+    939          
+    940          /* turn off modulation. */
+    941          void modulation_off()
+    942          {
+   \                     modulation_off:
+    943                  param.modulation = 0;
+   \   0000087E   18EE               SUB.B   R6L,R6L
+   \   00000880   6A8E....           MOV.B   R6L,@param+14:16
+    944                  set_pulse_width(param.strength);  /* Make sure we are not partway through a modulation. */
+   \   00000884   6A0E....           MOV.B   @param+9:16,R6L
+   \   00000888   5C00F8F8           BSR     set_pulse_width
+    945          }
+   \   0000088C   5470               RTS     
+    946          
+    947          /* Turn off the intensity function. */
+    948          void intensity_off()
+    949          {
+   \                     intensity_off:
+    950                  param.pulse_out_number = INTENSITY_MIN;
+   \   0000088E   FE01               MOV.B   #1,R6L
+   \   00000890   6A8E....           MOV.B   R6L,@param+12:16
+    951                  set_pulse_period();     
+   \   00000894   5C00F8FA           BSR     set_pulse_period
+    952          }       
+   \   00000898   5470               RTS     
+    953          
+    954          
+    955             
+    956          
+    957          /******************************************************************
+    958          NAME            : startup_sequence
+    959          PURPOSE         : Initialise the underlying operating system before
+    960                                    starting the language
+    961          PARAMETERS      : NONE
+    962          RETURNS         : NONE 
+    963          SIDE-EFFECTS: Lots
+    964          CALLED FROM : Main.c
+    965          *********************************************************************/
+    966          
+    967          
+    968          
+    969          
+    970          
+    971          
+    972                             
+   \                     	COMMON	INTVEC
+   \                     	DS.B	28
+   \                     	DC.L	nmi_service
+   \                     	DS.B	96
+   \                     	DC.L	pulse_in_svc
+   \                     	DS.B	44
+   \                     	DC.L	millisecond_tick_tpu
+   \                     	DS.B	12
+   \                     	DC.L	pulse_out_svc
+   \                     	RSEG	UDATA1
+   \                     param:
+   \                     	DS.B	20
+   \                     p2ddrc:
+   \                     	DS.B	1
+   \                     	DS.B	1
+   \                     pulse_period:
+   \                     	DS.B	2
+   \                     inter_pulse_period:
+   \                     	DS.B	2
+   \                     start_button:
+   \                     	DS.B	1
+   \                     mod_counter:
+   \                     	DS.B	1
+   \                     data_dest:
+   \                     	DS.B	8
+   \                     seconds:
+   \                     	DS.B	2
+   \                     last_seconds:
+   \                     	DS.B	2
+   \                     delta_width:
+   \                     	DS.B	2
+   \                     init_plus_percent:
+   \                     	DS.B	2
+   \                     init_plus_50:
+   \                     	DS.B	2
+   \                     milliseconds:
+   \                     	DS.B	4
+   \                     	RSEG	IDATA1
+   \                     interrupt_counter:
+   \                     	DS.B	1
+   \                     dog_state:
+   \                     	DS.B	1
+   \                     led_state:
+   \                     	DS.B	1
+   \                     count:
+   \                     	DS.B	1
+   \                     pulse_index:
+   \                     	DS.B	1
+   \                     n_rings:
+   \                     	DS.B	1
+   \                     initital_rings:
+   \                     	DS.B	1
+   \                     	DS.B	1
+   \                     frequency:
+   \                     	DS.B	2
+   \                     ramping:
+   \                     	DS.B	1
+   \                     	DS.B	1
+   \                     modulated_amp:
+   \                     	DS.B	2
+   \                     this_width:
+   \                     	DS.B	2
+   \                     last_width:
+   \                     	DS.B	2
+   \                     initial_width:
+   \                     	DS.B	2
+   \                     response:
+   \                     	DS.B	1
+   \                     dose:
+   \                     	DS.B	1
+   \                     delta_flattened_count:
+   \                     	DS.B	1
+   \                     	DS.B	1
+   \                     rate1:
+   \                     	DS.B	2
+   \                     initial_rate:
+   \                     	DS.B	2
+   \                     skin_display:
+   \                     	DS.B	1
+   \                     freeze_display:
+   \                     	DS.B	1
+   \                     no_reading_count:
+   \                     	DS.B	1
+   \                     	RSEG	CDATA1
+   \                     	DC.B	0
+   \                     	DC.B	0
+   \                     	DC.B	0
+   \                     	DC.B	0
+   \                     	DC.B	0
+   \                     	DC.B	0
+   \                     	DC.B	0
+   \                     	DC.B	0
+   \                     	DC.W	60
+   \                     	DC.B	0
+   \                     	DC.B	0
+   \                     	DC.W	10
+   \                     	DC.W	0
+   \                     	DC.W	0
+   \                     	DC.W	0
+   \                     	DC.B	0
+   \                     	DC.B	0
+   \                     	DC.B	0
+   \                     	DC.B	0
+   \                     	DC.W	0
+   \                     	DC.W	0
+   \                     	DC.B	0
+   \                     	DC.B	0
+   \                     	DC.B	0
+   \                     	RSEG	UDATA2
+   \                     menu_timer:
+   \                     	DS.B	10
+   \                     therapy_timer:
+   \                     	DS.B	10
+   \                     power_off_timer:
+   \                     	DS.B	10
+   \                     display_timer:
+   \                     	DS.B	10
+   \                     fifo:
+   \                     	DS.B	30
+   \                     modulation_timer:
+   \                     	DS.B	10
+   \                     	RSEG	DTCRAM
+   \                     transfer1:
+   \                     	DS.B	12
+   \                     	END
+
+Errors: none
+Warnings: none
+Code size: 2202
+Constant size: 227
+Static variable size: 173
+

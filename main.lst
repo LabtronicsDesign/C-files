@@ -1,0 +1,213 @@
+##############################################################################
+#                                                                            #
+# IAR H8 C-Compiler V1.53F/WIN                                               #
+#                                                                            #
+#       Compile time  =  19/Jun/2003  11:41:58                               #
+#       Target option =  H8S/2300                                            #
+#       Memory model  =  large                                               #
+#       Source file   =  h:\jobs\eumedic3\main.c                             #
+#       List file     =  h:\jobs\eumedic3\debug\list\main.lst                #
+#       Object file   =  h:\jobs\eumedic3\debug\obj\main.r37                 #
+#       Command line  =  -v3 -ml -OH:\Jobs\Eumedic3\Debug\Obj\ -RCODE -s9    #
+#                        -um0I0 -e -K -g -LH:\Jobs\Eumedic3\Debug\List\ -q   #
+#                        -t8 -IC:\IAR\EW23\h8\inc\ H:\Jobs\Eumedic3\main.c   #
+#                                                                            #
+#                           Copyright 2002 IAR Systems. All rights reserved. #
+##############################################################################
+
+   \                     	NAME	main(17)
+   \                     	RSEG	CODE(1)
+   \                     	RSEG	CSTR(1)
+   \                     	EXTERN	glcd_init
+   \                     	EXTERN	iic_init
+   \                     	EXTERN	io_init
+   \                     	PUBLIC	main
+   \                     	EXTERN	milli_sec_timer_init
+   \                     	EXTERN	power_down
+   \                     	EXTERN	sci1_init
+   \                     	EXTERN	serial_init
+   \                     	EXTERN	serial_put_string
+   \                     	EXTERN	setup_buzzer
+   \                     	EXTERN	setup_watchdog
+   \                     	EXTERN	start_screen
+   \                     	EXTERN	?CLH8SL_1_42_L00
+   \                     	RSEG	CODE
+      1          
+      2          
+      3          
+      4          /*
+      5          
+      6          
+      7          Copyright 2001 Eumedic Ltd.
+      8          
+      9          */
+     10          
+     11          
+     12          
+     13          
+     14          
+     15          
+     16          
+     17          
+     18          /*
+     19          
+     20          DESCRIPTION:   The C language entry point.
+     21          AUTHOR  : Karl Lam
+     22          DATE    : 4/10/2000
+     23          
+     24          History:                                                                                                                                                                                
+     25          --------------
+     26          
+     27          Released first version:
+     28           V1.00
+     29          
+     30          2001 04 04
+     31           Added Frequency Modulation (or freq cycling)
+     32           7 second period, from 30 to 120Hz.
+     33          
+     34          2001 04 04
+     35           Using 10S FIFO on the delta-dynamic display - don't know if that's the best way to do it.
+     36           Serial port only turned on if CTS is detected.
+     37          
+     38           Release: 
+     39           V1.01
+     40          
+     41          
+     42          2001 05 01
+     43           Put in sound when reach d/t <= 0 for 2 seconds. Used double speed warble.
+     44           Release: 
+     45           V1.02
+     46          
+     47          
+     48          2001 06 21
+     49           Added short warble on skin contact.
+     50            V1.03
+     51          
+     52          2001 06 21
+     53           Using DTC to meaure pulse widths:
+     54                  Setting up DTC in the pulse in int.
+     55                  Setting up pulse in int in the pulse out int.
+     56                  Tested Running CPU at 1/4 clock to test if we can use 4Mhz xtal. -> looks good.
+     57                  [Could run even slower!]
+     58          
+     59          
+     60          2001 07 03
+     61           Visual sign that 10s Calc bell has rung.
+     62           Increased moving average D/T to run over 15S.
+     63           Put in 3S screen freeze for each of the bells: dose bell and flat bell.
+     64           [Moved warble so that it happens after the screen has updated to give better feel]
+     65           Put back the display of n_rings, and added display of the initial rings: taken after 0.5 Secs.
+     66          
+     67           V1.04
+     68          
+     69          
+     70          2001 08 16
+     71          Put in graphics LCD drivers and GLCD based menu system.
+     72          
+     73          2001 08 21
+     74          Took time_low out of time calcs.
+     75          
+     76          */
+     77                          
+     78          #include <stdio.h>
+     79          #include <inh8.h>               /* Intrinsic Funcs */
+     80          #include <string.h>
+     81          
+     82          #include "hardware.h"                                     
+     83          #include "debug.h"                                        
+     84          #include "time.h"                                         
+     85          #include "pulse.h"                                        
+     86          #include "iic.h"                                          
+     87          #include "graphic.h"                                      
+     88          
+     89          
+     90          
+     91          
+     92          
+     93                           
+     94          
+     95          
+     96          
+     97          
+     98          
+     99          /* This is where we come in after the C system init that sets a stack in 
+    100          internal RAM, and fills the initialised data.
+    101          Don't put any more code in here, as we dont have much of a stack at this point,
+    102          and the stack may overwrite any date put in internal RAM.
+    103          */
+    104          
+    105          
+    106          void set_stack(long pos);
+    107          
+    108          int main()
+    109          {  
+   \                     main:
+    110          void setup_buzzer();
+    111          
+    112          void start_screen(); 
+    113          
+    114                  io_init();                                      /* Configure most of the I/O ports. */
+   \   00000000   5E......           JSR     @io_init:24
+    115          
+    116                  milli_sec_timer_init();         /* Initialise the time keeping systems, based on interrupts. */
+   \   00000004   5E......           JSR     @milli_sec_timer_init:24
+    117                  
+    118                  INTS_ON;                                        /* Let interrupts in from here. */
+   \   00000008   067F               ANDC    #127,CCR
+    119          
+    120                  iic_init();                                     /* Init the IIC Bus */
+   \   0000000A   5E......           JSR     @iic_init:24
+    121          
+    122                  serial_init();                          /* Configure the serial port. */
+   \   0000000E   5E......           JSR     @serial_init:24
+    123          
+    124                  sci1_init();                            /* Init the LCD synch serial */
+   \   00000012   5E......           JSR     @sci1_init:24
+    125          
+    126                  glcd_init();                            /* Init the Graphics LCD */
+   \   00000016   5E......           JSR     @glcd_init:24
+    127          
+    128                  setup_watchdog();                       /* Setup software watchdog. */
+   \   0000001A   5E......           JSR     @setup_watchdog:24
+    129          
+    130                  setup_buzzer();
+   \   0000001E   5E......           JSR     @setup_buzzer:24
+    131          
+    132          STR("Eumedic\r\n");
+   \   00000022   7A06....           MOV.L   #?0010,ER6
+   \            ....    
+   \   00000028   5E......           JSR     @serial_put_string:24
+    133          
+    134                  start_screen();
+   \   0000002C   5E......           JSR     @start_screen:24
+    135          
+    136                  /*********************/
+    137                  /* We should never get here. */
+    138                  STR("BackStop!\a\r\n");
+   \   00000030   7A06....           MOV.L   #?0011,ER6
+   \            ....    
+   \   00000036   5E......           JSR     @serial_put_string:24
+   \                     ?0013:
+    139                  while (1)
+    140                  {       
+    141                          power_down();
+   \   0000003A   5E......           JSR     @power_down:24
+    142                  }
+    143          }
+   \   0000003E   40FA               BRA     ?0013
+    144          
+   \                     	RSEG	CSTR
+   \                     ?0010:
+   \                     	DC.B	'Eumedic'
+   \                     	DC.B	13,10,0
+   \                     ?0011:
+   \                     	DC.B	'BackStop!'
+   \                     	DC.B	7,13,10,0
+   \                     	END
+
+Errors: none
+Warnings: none
+Code size: 64
+Constant size: 23
+Static variable size: 0
+

@@ -1,0 +1,231 @@
+
+/* Addapted by Karl Lam 12/9/00  */
+
+
+/****************************************************************/
+/*                         lnkh8sh.xcl                           */
+/*                                                              */
+/* XLINK command file to be used with the H8S (-v1 and -v2)     */
+/* C-compiler, ICCH8                                            */
+/*                                                              */
+/* Usage:  xlink  your_object_file(s)  -f lnkh8xx               */
+/*                                                              */
+/* Huge memory model (-mh) related linker command files:        */
+/*                                                              */
+/*	lnkh8sh.xcl	(default)                               */
+/*	lnkh8shd.xcl	64 bit doubles (option: -2)             */
+/*                                                              */
+/* NOTE1:  Be sure to use end values for the defined addresses  */
+/*         otherwise the linker may allocate space outside the  */
+/*	   intended memory range.                               */
+/*                                                              */
+/* NOTE2:  If you are using the command-line tools, do not      */
+/*	   forget to set the linker output format. The          */
+/*   	   suggested default value is Motorola S-records. To    */
+/*	   achieve this, see the end of this file.              */
+/*                                                              */
+/* (c) Copyright IAR Systems 1996-1999. All rights reserved.    */
+/*                                                              */
+/****************************************************************/
+
+/* 
+ * $Revision: 1.2 $
+ */
+
+
+/****************************************************************/
+/*      Define CPU                                              */
+/****************************************************************/
+
+-ch8
+
+
+/****************************************************************/
+/****************************************************************/
+/* Allocate the constant segments to the ROM area.              */
+/****************************************************************/
+/****************************************************************/
+
+
+
+/****************************************************************/
+/* Allocate the interrupt vector and the tiny_func function     */
+/* table area.                                                  */
+/*                                                              */
+/* Must be in address range: 0000-00FF                          */
+/*                                                              */
+/* NOTE: If you have problems with linking these segments then  */
+/* see the supplied text file hints.txt in the icch8            */
+/* installation directory.                                      */
+/****************************************************************/
+
+-Z(CODE)INTVEC,IFLIST,FLIST=0000-0160
+
+
+/****************************************************************/
+/* Allocate the program and constant data segments.             */
+/*                                                              */
+/*	RCODE	Startup code, interrupt handlers, and internal  */
+/*		library	functions.                              */
+/*	CODE	Normal program code.                            */
+/*	CDATAx	Initialisation constants for IDATAx segments    */
+/*		x = 0	tiny data                               */
+/*		x = 1	near data                               */
+/*		x = 2	far  data                                */
+/*		x = 3	huge data                               */
+/*	CONST	Constants                                       */
+/*	CSTR	String literals                                 */
+/*	CCSTR	Initialisers for strings, when using -y option. */
+/*                                                              */
+/* The ROM area is supposed to be 0x80000 - 0xFFFFF.            */
+/*                                                              */
+/* NOTE:  In case of a RAM only system the segment lists for    */
+/*	  RAM and ROM areas may be connected to allocate a      */
+/* 	  contigous memory space.                               */
+/****************************************************************/
+
+
+
+-Z(CODE)DTCVECT=000400-0004FF
+-Z(CODE)RCODE,CDATA0,CDATA1,CDATA2,CDATA3,CONST,CSTR,CCSTR,CODE=000500-7FFFF
+
+
+/************************************************************************/
+/************************************************************************/
+/* Allocate the writable segments to the RAM area.			*/
+/************************************************************************/
+/************************************************************************/
+
+
+/************************************************************************/
+/* Available data memory areas:						*/
+/*									*/
+/*		  Address range						*/
+/*	tiny	  0xFFFF00 - 0xFFFFFF		16M advanced mode	*/
+/*	near	  0x000000 - 0x007FFF					*/
+/*		  0xFF8000 - 0xFFFFFF					*/
+/*	far/huge  0x000000 - 0xFFFFFF					*/
+/*									*/
+/*	tiny	  0xFFFFFF00 - 0xFFFFFFFF	 4G advanced mode	*/
+/*	near	  0x00000000 - 0x00007FFF	 			*/
+/*		  0xFFFF8000 - 0xFFFFFFFF	 			*/
+/*	far/huge  0x00000000 - 0xFFFFFFFF				*/
+/*									*/
+/* Available data segments:						*/
+/*									*/
+/*	nIDATAx	Writable data segment					*/
+/*		n = I	initialised   data	x = 0	tiny data	*/
+/*		n = U	uninitialised data	x = 1	near data	*/
+/*						x = 2	far  data	*/
+/*						x = 3	huge data	*/
+/*									*/
+/*	ECSTR	Writable copies of constant string literals (-y option)	*/
+/*	WCSTR	Writable string literals				*/
+/*	TEMP	Auto variables (-d option)				*/
+/*	CSTACK	User stack						*/
+/*									*/
+/* The syntax for specifying the stack size is CSTACK+size. To change	*/
+/* the stack size just change the size to the wanted value.		*/
+/*									*/
+/* Example:	If a stack size of 0x5000 bytes are needed then use	*/
+/*		CSTACK+5000						*/
+/*									*/
+/* The far  area is supposed to be located between 0x070000 - 0x07FFFF. */
+/* The huge area is supposed to be located between 0x040000 - 0x06FFFF.	*/
+/*									*/
+/* IMPORTANT:								*/
+/* The far segments must be aligned on an even 64k boundary in order to	*/
+/* function properly. In this memory model following segments is of far	*/
+/* type:								*/
+/*									*/
+/*	IDATA2 and UDATA2						*/
+/************************************************************************/
+
+/* tiny data */
+-Z(DATA)IDATA0,UDATA0=FFFF00-FFFFFF
+
+/* near data: There are 2K bytes of internal RAM between addresses FFF400 - FFFBFF */
+-Z(DATA)IDATA1,UDATA1=FFFFF400-FFFFF7FF
+-Z(DATA)DTCRAM=FFFFF800-FFFFF900
+      
+/* huge data */
+-Z(HUGE)NO_INIT,IDATA3,UDATA3,ECSTR,WCSTR,TEMP=260000-280000
+/* far data */
+-Z(FAR)IDATA2,UDATA2 /* 128K locates at higher mem. */
+/* stack */
+-Z(HUGE)CSTACK+100=FFFB00
+
+/************************************************************************/
+/* Declare the non-volatile segment, NO_INIT, which holds variables to	*/
+/* be placed in non-volatile memory.					*/
+/*									*/
+/* Example:	-Z(DATA)NO_INIT=start-end				*/
+/************************************************************************/
+
+
+/************************************************************************/
+/* Declare the segment holding the bit variables, BITVARS.		*/
+/*									*/
+/* Following must apply:						*/
+/*									*/
+/* 1. The bit segment must be in the near address range.		*/
+/* 2. The address specifications must be sign extended to 32 bits.	*/
+/*									*/
+/* This implies the following possible address range for bit variables: */
+/*									*/
+/* 	0x00000000 - 0x00007FFF						*/
+/* 	0xFFFF8000 - 0xFFFFFFFF						*/
+/*									*/
+/* To calculate the actual bit offset:					*/
+/*									*/
+/*	(byte address) * 8 + bit number					*/
+/*									*/
+/* Bit offset FFFFD800 equals address FFFFFB00 bit 0.			*/
+/* Bit offset FFFFDFFF equals address FFFFFBFF bit 7.			*/
+/*									*/
+/* NOTE:  The ranges for the bit and near segments are identical. The	*/
+/*	  linker will allocate the bit variables first and then use the	*/
+/*	  remaining memory in that area for near data.			*/
+/************************************************************************/
+
+-Z(BIT)BITVARS=FFFFF440-FFFFF480
+
+
+/************************************************************************/
+/* Select the printf/sprintf formatter to use.                          */
+/*   See configuration section in manual.                               */
+/************************************************************************/
+
+/* -e_medium_write=_formatted_write  - we want the full 'printf' functionality */
+
+
+/************************************************************************/
+/* Select the scanf/sscanf formatter to use.                            */
+/*   See configuration section in manual.                               */
+/************************************************************************/
+
+ -e_medium_read=_formatted_read 
+
+
+/************************************************************************/
+/* Select the C library to use for the -v1 or -v2 processor option.  	*/
+/*   clh8sh  	double option: (none)                                 	*/
+/*   clh8shd    double option: -2					*/
+/*   clh8shVNM - is possibly modified to change some lib funcs		*/
+/************************************************************************/
+
+
+
+clh8sl
+
+
+/************************************************************************/
+/* Generate the object code in Motorola S-record format:		*/
+/*									*/
+/* Example:	-F MOTOROLA						*/
+/************************************************************************/
+
+
+/************************************************************************/
+/* End of File            	                                        */
+/************************************************************************/

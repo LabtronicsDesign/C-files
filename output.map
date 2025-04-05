@@ -1,0 +1,884 @@
+################################################################################
+#                                                                              #
+#      IAR Universal Linker V4.53N/WIN                                         #
+#                                                                              #
+#           Link time     =  19/Jun/2003  11:42:04                             #
+#           Target CPU    =  H8S/H8300H                                        #
+#           List file     =  H:\Jobs\Eumedic3\Debug\List\output.map            #
+#           Output file 1 =  H:\Jobs\Eumedic3\Debug\Exe\output.a37             #
+#                            Format: motorola                                  #
+#           Command line  =  H:\Jobs\Eumedic3\Debug\Obj\access.r37             #
+#                            H:\Jobs\Eumedic3\Debug\Obj\context.r37            #
+#                            H:\Jobs\Eumedic3\Debug\Obj\font1.r37              #
+#                            H:\Jobs\Eumedic3\Debug\Obj\font2.r37              #
+#                            H:\Jobs\Eumedic3\Debug\Obj\GMenus.r37             #
+#                            H:\Jobs\Eumedic3\Debug\Obj\Graphic.r37            #
+#                            H:\Jobs\Eumedic3\Debug\Obj\iic.r37                #
+#                            H:\Jobs\Eumedic3\Debug\Obj\Lowinit.r37            #
+#                            H:\Jobs\Eumedic3\Debug\Obj\main.r37               #
+#                            H:\Jobs\Eumedic3\Debug\Obj\pulse.r37              #
+#                            H:\Jobs\Eumedic3\Debug\Obj\serial.r37             #
+#                            H:\Jobs\Eumedic3\Debug\Obj\time.r37 -o            #
+#                            H:\Jobs\Eumedic3\Debug\Exe\output.a37             #
+#                            -Fmotorola -l                                     #
+#                            H:\Jobs\Eumedic3\Debug\List\output.map -xms       #
+#                            -IC:\IAR\EW23\h8\LIB\ -f                          #
+#                            H:\Jobs\Eumedic3\lnkh8shMODIFIED.xcl (-ch8        #
+#                            -Z(CODE)INTVEC,IFLIST,FLIST=0000-0160             #
+#                            -Z(CODE)DTCVECT=000400-0004FF                     #
+#                            -Z(CODE)RCODE,CDATA0,CDATA1,CDATA2,CDATA3,CONST,C #
+#                            STR,CCSTR,CODE=000500-7FFFF                       #
+#                            -Z(DATA)IDATA0,UDATA0=FFFF00-FFFFFF               #
+#                            -Z(DATA)IDATA1,UDATA1=FFFFF400-FFFFF7FF           #
+#                            -Z(DATA)DTCRAM=FFFFF800-FFFFF900                  #
+#                            -Z(HUGE)NO_INIT,IDATA3,UDATA3,ECSTR,WCSTR,TEMP=26 #
+#                            0000-280000                                       #
+#                            -Z(FAR)IDATA2,UDATA2 -Z(HUGE)CSTACK+100=FFFB00    #
+#                            -Z(BIT)BITVARS=FFFFF440-FFFFF480                  #
+#                            -e_medium_read=_formatted_read clh8sl)            #
+#                                                                              #
+#                        Copyright 1987-2002 IAR Systems. All rights reserved. #
+################################################################################
+
+
+
+
+
+                ****************************************
+                *                                      *
+                *           CROSS REFERENCE            *
+                *                                      *
+                ****************************************
+
+       Program entry at :           00000518  Relocatable, from module : CSTARTUP
+
+
+
+
+                ****************************************
+                *                                      *
+                *              MODULE MAP              *
+                *                                      *
+                ****************************************
+
+
+  FILE NAME : H:\Jobs\Eumedic3\Debug\Obj\access.r37
+  PROGRAM MODULE, NAME : access
+
+  SEGMENTS IN THE MODULE
+  ======================
+CODE
+  Relative segment, address: 00001B6E - 00001C17 (aa bytes), align: 1
+  Segment part 0. ROOT.
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           binary_coded_quartal    00001B8C 
+           encrypt                 00001B6E 
+           key_func                00001BBA        calc_checksum (gmenus)
+               calls direct
+    -------------------------------------------------------------------------
+CONST
+  Relative segment, address: 000009EC - 00000AEB (100 bytes), align: 1
+  Segment part 4. ROOT.       Intra module refs:   binary_coded_quartal
+    -------------------------------------------------------------------------
+UDATA2
+  Relative segment, address: 00260016 - 00260016 (1 bytes), align: 1
+  Segment part 16. ROOT.      Intra module refs:   binary_coded_quartal
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           crypt_acc               00260016 
+
+    *************************************************************************
+
+  FILE NAME : H:\Jobs\Eumedic3\Debug\Obj\context.r37
+  PROGRAM MODULE, NAME : swapper
+
+  SEGMENTS IN THE MODULE
+  ======================
+CODE
+  Relative segment, address: 00001C18 - 00001C31 (1a bytes), align: 1
+  Segment part 0. ROOT.
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           stack                   00001C18 
+           set_stack               00001C1C 
+    -------------------------------------------------------------------------
+DTCVECT
+  Common segment, address: 00000400 - 00000441 (42 bytes), align: 1
+  Segment part 1. ROOT.
+
+    *************************************************************************
+
+  FILE NAME : H:\Jobs\Eumedic3\Debug\Obj\font1.r37
+  PROGRAM MODULE, NAME : font1
+
+  SEGMENTS IN THE MODULE
+  ======================
+CODE
+  Relative segment, address: 00001C32, align: 1
+  Segment part 0. ROOT.
+    -------------------------------------------------------------------------
+CONST
+  Relative segment, address: 00000AEC - 00000EDA (3ef bytes), align: 1
+  Segment part 4. ROOT.
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           font_data1              00000AEC        bar_graph (graphic)
+
+    *************************************************************************
+
+  FILE NAME : H:\Jobs\Eumedic3\Debug\Obj\font2.r37
+  PROGRAM MODULE, NAME : font2
+
+  SEGMENTS IN THE MODULE
+  ======================
+CODE
+  Relative segment, address: 00001C32, align: 1
+  Segment part 0. ROOT.
+    -------------------------------------------------------------------------
+CONST
+  Relative segment, address: 00000EDC - 000018E1 (a06 bytes), align: 1
+  Segment part 4. ROOT.
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           font_data2              00000EDC        bar_graph (graphic)
+
+    *************************************************************************
+
+  FILE NAME : H:\Jobs\Eumedic3\Debug\Obj\GMenus.r37
+  PROGRAM MODULE, NAME : gmenus
+
+  SEGMENTS IN THE MODULE
+  ======================
+CODE
+  Relative segment, address: 00001C32 - 00003A31 (1e00 bytes), align: 1
+  Segment part 0. ROOT.
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           calc_checksum           00001C32 
+           disp_modulation         00002142 
+               calls direct
+           get_credit              00003546 
+               calls direct
+           main_menu               0000236C 
+               calls direct
+           main_screen             00002174 
+               calls direct
+           menu_contrast           0000310A 
+               calls direct
+           menu_filter             00002AE6 
+               calls direct
+           menu_freq               00002E58 
+               calls direct
+           menu_freq_cycle         00002994 
+               calls direct
+           menu_hours              000031FE 
+               calls direct
+           menu_icons              00001F9E 
+               calls direct
+           menu_intensity          00002C34 
+               calls direct
+           menu_interpulse         00002D4A 
+               calls direct
+           menu_map                00002838 
+               calls direct
+           menu_modulation         00002880 
+               calls direct
+           menu_power_off          0000335A 
+               calls direct
+           menu_timeout            000027FC 
+               calls direct
+           menu_tree               000033FA 
+               calls direct
+           options_menu            00003034 
+               calls direct
+           plot_seq_chars_at       000034D2 
+               calls direct
+           power_down              00001E40        main (main)
+               calls direct
+           print_battery_state_at_col
+                                   00001F5C 
+               calls direct
+           print_big_value         00002106 
+               calls direct
+           print_params            00001C48 
+               calls direct
+           range                   00001D1C 
+           read_button             00001E8E 
+           read_keypad_action      00001ECE 
+               calls direct
+           read_parameters         00001D34 
+               calls direct
+           realise_parameters      00003526 
+               calls direct
+           save_parameters         00001CBA 
+               calls direct
+           set_default_params      00001CE2 
+           set_menu_state          000020E6 
+               calls direct
+           settings_icons          00002018 
+               calls direct
+           skin_screen             0000221E 
+               calls direct
+           start_screen            00003812        main (main)
+               calls direct
+           therapy_credit          00003774 
+               calls direct
+    -------------------------------------------------------------------------
+CSTR
+  Relative segment, address: 000018F2 - 00001B02 (211 bytes), align: 1
+  Segment part 1. ROOT.       Intra module refs:   calc_checksum
+    -------------------------------------------------------------------------
+UDATA2
+  Relative segment, address: 00260018 - 0026007C (65 bytes), align: 1
+  Segment part 16. ROOT.      Intra module refs:   calc_checksum
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           g_str                   00260019 
+           menu_sprite_col         00260018 
+    -------------------------------------------------------------------------
+IDATA2
+  Relative segment, address: 00260000 - 0026000C (d bytes), align: 1
+  Segment part 17. ROOT.      Intra module refs:   calc_checksum
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           auto_repeating          00260008 
+           button_auto_wait        00260003 
+           last_menu               00260002 
+           menu                    00260001 
+           parameters_valid        00260000 
+           text_lh                 0026000C 
+    -------------------------------------------------------------------------
+CDATA2
+  Relative segment, address: 000009D6 - 000009E2 (d bytes), align: 1
+  Segment part 18. ROOT.
+
+    *************************************************************************
+
+  FILE NAME : H:\Jobs\Eumedic3\Debug\Obj\Graphic.r37
+  PROGRAM MODULE, NAME : graphic
+
+  SEGMENTS IN THE MODULE
+  ======================
+CODE
+  Relative segment, address: 00003A32 - 00003F57 (526 bytes), align: 1
+  Segment part 0. ROOT.
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           bar_graph               00003D0E        calc_checksum (gmenus)
+           clear_screen            00003EEC        calc_checksum (gmenus)
+               calls direct
+           fill_rectangle          00003B94 
+           glcd_control_write      00003A62 
+               calls direct
+           glcd_init               00003F18        main (main)
+               calls direct
+           glcd_print_string       00003E04        calc_checksum (gmenus)
+               calls direct
+           plot_big_char           00003D82        calc_checksum (gmenus)
+           plot_small_char         00003CA4 
+           plot_sprite             00003E82        calc_checksum (gmenus)
+               calls direct
+           sci1_init               00003A32        main (main)
+               calls direct
+           sci1_send               00003A54 
+           set_contrast            00003A70        calc_checksum (gmenus)
+               calls direct
+           set_viewpoint           00003A78        calc_checksum (gmenus)
+               calls direct
+           update_display          00003A96        calc_checksum (gmenus)
+               calls direct
+    -------------------------------------------------------------------------
+CONST
+  Relative segment, address: 000018E2 - 000018F1 (10 bytes), align: 1
+  Segment part 4. ROOT.       Intra module refs:   bar_graph
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           end_masks               000018EA 
+           start_masks             000018E2 
+    -------------------------------------------------------------------------
+UDATA2
+  Relative segment, address: 0026007E - 00260485 (408 bytes), align: 1
+  Segment part 16. ROOT.      Intra module refs:   bar_graph
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           changed_lines           0026047E        calc_checksum (gmenus)
+           disp_data               0026007E 
+    -------------------------------------------------------------------------
+IDATA2
+  Relative segment, address: 0026000E - 0026000E (1 bytes), align: 1
+  Segment part 17. ROOT.      Intra module refs:   bar_graph
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           upside_down             0026000E        calc_checksum (gmenus)
+    -------------------------------------------------------------------------
+CDATA2
+  Relative segment, address: 000009E4 - 000009E4 (1 bytes), align: 1
+  Segment part 18. ROOT.
+
+    *************************************************************************
+
+  FILE NAME : H:\Jobs\Eumedic3\Debug\Obj\iic.r37
+  PROGRAM MODULE, NAME : iic
+
+  SEGMENTS IN THE MODULE
+  ======================
+CODE
+  Relative segment, address: 00003F58 - 00004155 (1fe bytes), align: 1
+  Segment part 0. ROOT.
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           iic_get                 00003FDA 
+               calls direct
+           iic_init                00004074        main (main)
+               calls direct
+           iic_off                 00003F66 
+               calls direct
+           iic_on                  00003F58 
+               calls direct
+           iic_poll                0000405A 
+               calls direct
+           iic_put                 00003F74 
+               calls direct
+           read_block_from_eeprom
+                                   00004100        calc_checksum (gmenus)
+               calls direct
+           wait_for_eeprom_to_finish
+                                   00004096        calc_checksum (gmenus)
+               calls direct
+           write_block_to_eeprom   000040C0        calc_checksum (gmenus)
+               calls direct
+    -------------------------------------------------------------------------
+CSTR
+  Relative segment, address: 00001B04 - 00001B1F (1c bytes), align: 1
+  Segment part 1. ROOT.       Intra module refs:   iic_get
+
+    *************************************************************************
+
+  FILE NAME : H:\Jobs\Eumedic3\Debug\Obj\Lowinit.r37
+  PROGRAM MODULE, NAME : lowinit
+
+  SEGMENTS IN THE MODULE
+  ======================
+RCODE
+  Relative segment, address: 00000500 - 00000517 (18 bytes), align: 1
+  Segment part 0. ROOT.
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           low_level_init          00000500        Segment part 2 (CSTARTUP)
+
+    *************************************************************************
+
+  FILE NAME : H:\Jobs\Eumedic3\Debug\Obj\main.r37
+  PROGRAM MODULE, NAME : main
+
+  SEGMENTS IN THE MODULE
+  ======================
+CODE
+  Relative segment, address: 00004156 - 00004195 (40 bytes), align: 1
+  Segment part 0. ROOT.
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           main                    00004156        Segment part 2 (CSTARTUP)
+               calls direct
+    -------------------------------------------------------------------------
+CSTR
+  Relative segment, address: 00001B20 - 00001B36 (17 bytes), align: 1
+  Segment part 1. ROOT.       Intra module refs:   main
+
+    *************************************************************************
+
+  FILE NAME : H:\Jobs\Eumedic3\Debug\Obj\pulse.r37
+  PROGRAM MODULE, NAME : pulse
+
+  SEGMENTS IN THE MODULE
+  ======================
+CODE
+  Relative segment, address: 00004196 - 00004A2F (89a bytes), align: 1
+  Segment part 0. ROOT.       Intra module refs:   Segment part 5
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           beep_for                00004408        calc_checksum (gmenus)
+               calls direct
+           beep_period_and_time    00004444 
+               calls direct
+           end_beep                0000446E        calc_checksum (gmenus)
+               calls direct
+           find_thresh             00004566 
+               calls direct
+           freq_cycling_off        00004A00        calc_checksum (gmenus)
+               calls direct
+           intensity_off           00004A24        calc_checksum (gmenus)
+               calls direct
+           io_init                 000041F4        main (main)
+           milli_sec_timer_init    000041D0        main (main)
+           millisecond_tick_tpu    000041B2 
+               interrupt function
+               calls direct
+           modulate                000048C6        calc_checksum (gmenus)
+               calls direct
+           modulation_off          00004A14        calc_checksum (gmenus)
+               calls direct
+           nmi_service             000041B0 
+               interrupt function
+           pip_n_times             000044E6        calc_checksum (gmenus)
+               calls direct
+           pulse_in_svc            0000428C 
+               interrupt function
+           pulse_out_svc           0000422E 
+               interrupt function
+           read_battery            00004508        calc_checksum (gmenus)
+           reset_modulation        000049D8        calc_checksum (gmenus)
+               calls direct
+           set_pulse_period        00004328        calc_checksum (gmenus)
+           set_pulse_width         0000431A        calc_checksum (gmenus)
+           set_up_hardware_count   000043C4 
+           set_up_input_capture    000043B2 
+           set_up_pulse_output     00004388 
+               calls direct
+           setup_buzzer            000043D2        main (main)
+           setup_dtc               000042C2        calc_checksum (gmenus)
+           setup_threshold         0000459C        calc_checksum (gmenus)
+               calls direct
+           setup_tpu               000043FC        calc_checksum (gmenus)
+               calls direct
+           setup_watchdog          00004196        main (main)
+           therapy_control         000045CC        calc_checksum (gmenus)
+               calls direct
+           warble                  00004476        calc_checksum (gmenus)
+               calls direct
+           write_analogue          00004556 
+    -------------------------------------------------------------------------
+INTVEC
+  Common segment, address: 00000000 - 000000C3 (c4 bytes), align: 1
+  Segment part 5. ROOT.
+    -------------------------------------------------------------------------
+UDATA1
+  Relative segment, address: FFFFF424 - FFFFF455 (32 bytes), align: 1
+  Segment part 13. ROOT.      Intra module refs:   beep_for
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           data_dest               FFFFF440 
+           delta_width             FFFFF44C        calc_checksum (gmenus)
+           init_plus_50            FFFFF450 
+           init_plus_percent       FFFFF44E 
+           inter_pulse_period      FFFFF43C 
+           last_seconds            FFFFF44A 
+           milliseconds            FFFFF452 
+           mod_counter             FFFFF43F 
+           p2ddrc                  FFFFF438        iic_get (iic)
+           param                   FFFFF424        calc_checksum (gmenus)
+           pulse_period            FFFFF43A 
+           seconds                 FFFFF448        calc_checksum (gmenus)
+           start_button            FFFFF43E 
+    -------------------------------------------------------------------------
+IDATA1
+  Relative segment, address: FFFFF400 - FFFFF41E (1f bytes), align: 1
+  Segment part 14. ROOT.      Intra module refs:   beep_for
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           count                   FFFFF403 
+           delta_flattened_count   FFFFF416 
+           dog_state               FFFFF401 
+           dose                    FFFFF415        calc_checksum (gmenus)
+           freeze_display          FFFFF41D        calc_checksum (gmenus)
+           frequency               FFFFF408        calc_checksum (gmenus)
+           initial_rate            FFFFF41A 
+           initial_width           FFFFF412        calc_checksum (gmenus)
+           initital_rings          FFFFF406 
+           interrupt_counter       FFFFF400 
+           last_width              FFFFF410 
+           led_state               FFFFF402 
+           modulated_amp           FFFFF40C        calc_checksum (gmenus)
+           n_rings                 FFFFF405        calc_checksum (gmenus)
+           no_reading_count        FFFFF41E        calc_checksum (gmenus)
+           pulse_index             FFFFF404 
+           ramping                 FFFFF40A 
+           rate1                   FFFFF418 
+           response                FFFFF414        calc_checksum (gmenus)
+           skin_display            FFFFF41C        calc_checksum (gmenus)
+           this_width              FFFFF40E        calc_checksum (gmenus)
+    -------------------------------------------------------------------------
+CDATA1
+  Relative segment, address: 000009B2 - 000009D0 (1f bytes), align: 1
+  Segment part 15. ROOT.
+    -------------------------------------------------------------------------
+UDATA2
+  Relative segment, address: 00260486 - 002604D5 (50 bytes), align: 1
+  Segment part 16. ROOT.      Intra module refs:   beep_for
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           display_timer           002604A4        calc_checksum (gmenus)
+           fifo                    002604AE 
+           menu_timer              00260486        calc_checksum (gmenus)
+           modulation_timer        002604CC 
+           power_off_timer         0026049A        calc_checksum (gmenus)
+           therapy_timer           00260490 
+    -------------------------------------------------------------------------
+DTCRAM
+  Relative segment, address: FFFFF800 - FFFFF80B (c bytes), align: 1
+  Segment part 36. ROOT.      Intra module refs:   beep_for
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           transfer1               FFFFF800        Segment part 1 (swapper)
+
+    *************************************************************************
+
+  FILE NAME : H:\Jobs\Eumedic3\Debug\Obj\serial.r37
+  PROGRAM MODULE, NAME : serial
+
+  SEGMENTS IN THE MODULE
+  ======================
+CODE
+  Relative segment, address: 00004A30 - 00004B35 (106 bytes), align: 1
+  Segment part 0. ROOT.       Intra module refs:   Segment part 5
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           serial_init             00004B1A        main (main)
+               calls direct
+           serial_input_queue      00004AB8 
+           serial_output_queue     00004AC8 
+           serial_put              00004A80 
+               calls direct
+           serial_put_string       00004B02        calc_checksum (gmenus)
+                                                   iic_get (iic)
+                                                   main (main)
+               calls direct
+           serial_receive_error_service
+                                   00004A74 
+               interrupt function
+           serial_transmit_service
+                                   00004A30 
+               interrupt function
+           serial_wait_for_output
+                                   00004ADA 
+           serial_wait_for_output_no_swap
+                                   00004AEE 
+    -------------------------------------------------------------------------
+INTVEC
+  Common segment, address: 00000000 - 0000014B (14c bytes), align: 1
+  Segment part 5. ROOT.
+    -------------------------------------------------------------------------
+UDATA2
+  Relative segment, address: 002604D6 - 002607D9 (304 bytes), align: 1
+  Segment part 16. ROOT.      Intra module refs:   serial_init
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           print_temp              002604D6        calc_checksum (gmenus)
+    -------------------------------------------------------------------------
+IDATA2
+  Relative segment, address: 00260010 - 00260015 (6 bytes), align: 1
+  Segment part 17. ROOT.      Intra module refs:   serial_init
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           control_c_break_allowed
+                                   00260010 
+           transmit_hs_status      00260015 
+    -------------------------------------------------------------------------
+CDATA2
+  Relative segment, address: 000009E6 - 000009EB (6 bytes), align: 1
+  Segment part 18. ROOT.
+
+    *************************************************************************
+
+  FILE NAME : H:\Jobs\Eumedic3\Debug\Obj\time.r37
+  PROGRAM MODULE, NAME : time
+
+  SEGMENTS IN THE MODULE
+  ======================
+CODE
+  Relative segment, address: 00004B36 - 00004C69 (134 bytes), align: 1
+  Segment part 0. ROOT.
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           stop_watch_seconds      00004C18        beep_for (pulse)
+           stop_watch_start        00004C02        beep_for (pulse)
+           stop_watch_time         00004C46        beep_for (pulse)
+           timer_done              00004BA8        beep_for (pulse)
+                                                   calc_checksum (gmenus)
+           timer_go                00004B6E        beep_for (pulse)
+                                                   calc_checksum (gmenus)
+           timer_init              00004B5C 
+           timer_reset             00004BE0 
+           timer_seconds           00004BC6 
+           wait                    00004B36        bar_graph (graphic)
+                                                   beep_for (pulse)
+                                                   calc_checksum (gmenus)
+                                                   iic_get (iic)
+                                                   serial_init (serial)
+               calls direct
+           LOCAL                   ADDRESS         
+           =====                   =======         
+           timer_advance           00004BE8 
+    -------------------------------------------------------------------------
+IDATA1
+  Relative segment, address: FFFFF420 - FFFFF423 (4 bytes), align: 1
+  Segment part 14. ROOT.      Intra module refs:   stop_watch_seconds
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           time_low                FFFFF420        beep_for (pulse)
+    -------------------------------------------------------------------------
+CDATA1
+  Relative segment, address: 000009D2 - 000009D5 (4 bytes), align: 1
+  Segment part 15. ROOT.
+
+    *************************************************************************
+
+  FILE NAME : C:\IAR\EW23\h8\LIB\clh8sl.r37
+  PROGRAM MODULE, NAME : CSTARTUP
+
+  SEGMENTS IN THE MODULE
+  ======================
+INTVEC
+  Common segment, address: 00000000 - 0000000F (10 bytes), align: 1
+  Segment part 0. ROOT.
+    -------------------------------------------------------------------------
+CSTACK
+  Relative segment, address: 00FFFB00, align: 1
+  Segment part 1. ROOT.
+    -------------------------------------------------------------------------
+RCODE
+  Relative segment, address: 00000518 - 0000060F (f8 bytes), align: 1
+  Segment part 2. ROOT.       Intra module refs:   Segment part 0
+    -------------------------------------------------------------------------
+UDATA0
+  Relative segment, address: 00FFFF00, align: 1
+  Segment part 3. ROOT.
+    -------------------------------------------------------------------------
+UDATA1
+  Relative segment, address: FFFFF456, align: 1
+  Segment part 4. ROOT.
+    -------------------------------------------------------------------------
+UDATA2
+  Relative segment, address: 002607DA, align: 1
+  Segment part 5. ROOT.
+    -------------------------------------------------------------------------
+UDATA3
+  Relative segment, address: 00260000, align: 1
+  Segment part 6. ROOT.
+    -------------------------------------------------------------------------
+IDATA0
+  Relative segment, address: 00FFFF00, align: 1
+  Segment part 7. ROOT.
+    -------------------------------------------------------------------------
+IDATA1
+  Relative segment, address: FFFFF424, align: 1
+  Segment part 8. ROOT.
+    -------------------------------------------------------------------------
+IDATA2
+  Relative segment, address: 00260016, align: 1
+  Segment part 9. ROOT.
+    -------------------------------------------------------------------------
+IDATA3
+  Relative segment, address: 00260000, align: 1
+  Segment part 10. ROOT.
+    -------------------------------------------------------------------------
+CDATA0
+  Relative segment, address: 000009B2, align: 1
+  Segment part 11. ROOT.
+    -------------------------------------------------------------------------
+CDATA1
+  Relative segment, address: 000009D6, align: 1
+  Segment part 12. ROOT.
+    -------------------------------------------------------------------------
+CDATA2
+  Relative segment, address: 000009EC, align: 1
+  Segment part 13. ROOT.
+    -------------------------------------------------------------------------
+CDATA3
+  Relative segment, address: 000009EC, align: 1
+  Segment part 14. ROOT.
+    -------------------------------------------------------------------------
+ECSTR
+  Relative segment, address: 00260000, align: 1
+  Segment part 17. ROOT.
+    -------------------------------------------------------------------------
+CCSTR
+  Relative segment, address: 00001B6E, align: 1
+  Segment part 19. ROOT.
+
+    -------------------------------------------------------------------------
+  LIBRARY MODULE, NAME : exit
+
+  SEGMENTS IN THE MODULE
+  ======================
+CODE
+  Relative segment, address: 00004C6A - 00004C6B (2 bytes), align: 1
+  Segment part 0. ROOT.
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           ?C_EXIT                 00004C6A 
+           exit                    00004C6A        Segment part 2 (CSTARTUP)
+
+    -------------------------------------------------------------------------
+  LIBRARY MODULE, NAME : ?LIB_VERSION_L00
+
+  SEGMENTS IN THE MODULE
+  ======================
+RCODE
+  Relative segment, address: 00000610, align: 1
+  Segment part 0. ROOT.
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           ?CLH8SL_1_42_L00        00000610 
+
+    -------------------------------------------------------------------------
+  LIBRARY MODULE, NAME : ?UL_DIV_L03
+
+  SEGMENTS IN THE MODULE
+  ======================
+RCODE
+  Relative segment, address: 00000610 - 000006BB (ac bytes), align: 1
+  Segment part 0. ROOT.
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           ?UL_MOD_L03             0000061A        _formatted_write (?largewr)
+                                                   calc_checksum (gmenus)
+           ?UL_MOD_SWAP_L03        00000610 
+           ?UL_DIV_L03             00000678        _formatted_write (?largewr)
+                                                   calc_checksum (gmenus)
+                                                   stop_watch_seconds (time)
+           ?UL_DIV_SWAP_L03        0000066E 
+           ?SL_MOD_L03             0000064E        calc_checksum (gmenus)
+           ?SL_MOD_SWAP_L03        00000644 
+           ?SL_DIV_L03             0000062A        beep_for (pulse)
+                                                   calc_checksum (gmenus)
+                                                   stop_watch_seconds (time)
+           ?SL_DIV_SWAP_L03        00000620 
+
+    -------------------------------------------------------------------------
+  LIBRARY MODULE, NAME : ?F_MUL_L04
+
+  SEGMENTS IN THE MODULE
+  ======================
+RCODE
+  Relative segment, address: 000006BC - 0000098F (2d4 bytes), align: 1
+  Segment part 0. ROOT.
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           ?F_MUL_L04              000006BC        _formatted_write (?largewr)
+                                                   beep_for (pulse)
+                                                   calc_checksum (gmenus)
+           ?F_DIV_L04              00000780        _formatted_write (?largewr)
+                                                   beep_for (pulse)
+           ?F_DIV_SWAP_L04         00000776 
+           ?F_SUB_L04              0000084E        _formatted_write (?largewr)
+           ?F_SUB_SWAP_L04         00000844 
+           ?F_ADD_L04              00000858        calc_checksum (gmenus)
+           ?F_TO_L_L04             00000918        _formatted_write (?largewr)
+                                                   calc_checksum (gmenus)
+           ?SL_TO_F_L04            00000950        _formatted_write (?largewr)
+                                                   beep_for (pulse)
+           ?UL_TO_F_L04            0000095C 
+
+    -------------------------------------------------------------------------
+  LIBRARY MODULE, NAME : ?F_CMP_L04
+
+  SEGMENTS IN THE MODULE
+  ======================
+RCODE
+  Relative segment, address: 00000990 - 000009B1 (22 bytes), align: 1
+  Segment part 0. ROOT.
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           ?F_CMP_L04              0000099A        _formatted_write (?largewr)
+           ?F_CMP_SWAP_L04         00000990 
+
+    -------------------------------------------------------------------------
+  LIBRARY MODULE, NAME : ?largewr
+
+  SEGMENTS IN THE MODULE
+  ======================
+CODE
+  Relative segment, address: 00004C6C - 000054C3 (858 bytes), align: 1
+  Segment part 0. ROOT.
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           _formatted_write        00004F08        sprintf (?sprintf)
+               calls direct and indirect
+           LOCAL                   ADDRESS         
+           =====                   =======         
+           float_conversion        00004C6C 
+    -------------------------------------------------------------------------
+CSTR
+  Relative segment, address: 00001B38 - 00001B6C (35 bytes), align: 1
+  Segment part 1. ROOT.       Intra module refs:   _formatted_write
+
+    -------------------------------------------------------------------------
+  LIBRARY MODULE, NAME : ?memset
+
+  SEGMENTS IN THE MODULE
+  ======================
+CODE
+  Relative segment, address: 000054C4 - 000054F3 (30 bytes), align: 1
+  Segment part 0. ROOT.
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           memset                  000054C4        bar_graph (graphic)
+
+    -------------------------------------------------------------------------
+  LIBRARY MODULE, NAME : ?sprintf
+
+  SEGMENTS IN THE MODULE
+  ======================
+CODE
+  Relative segment, address: 000054F4 - 00005557 (64 bytes), align: 1
+  Segment part 0. ROOT.
+           ENTRY                   ADDRESS         REF BY
+           =====                   =======         ======
+           sprintf                 0000550C        calc_checksum (gmenus)
+               calls direct
+           LOCAL                   ADDRESS         
+           =====                   =======         
+           put_c_in_string         000054F4 
+
+
+
+
+                ****************************************
+                *                                      *
+                *      SEGMENTS IN ADDRESS ORDER       *
+                *                                      *
+                ****************************************
+
+
+SEGMENT              SPACE   START ADDRESS    END ADDRESS      SIZE  TYPE  ALIGN
+=======              =====   =============    ===========      ====  ====  =====
+INTVEC                            00000000 - 0000014B           14C   com    1
+DTCVECT                           00000400 - 00000441            42   com    1
+RCODE                             00000500 - 000009B1           4B2   rel    1
+CDATA0                                 000009B2                       rel    1
+CDATA1                            000009B2 - 000009D5            24   rel    1
+CDATA2                            000009D6 - 000009EB            16   rel    1
+CDATA3                                 000009EC                       rel    1
+CONST                             000009EC - 000018F1           F06   rel    1
+CSTR                              000018F2 - 00001B6C           27B   rel    1
+CCSTR                                  00001B6E                       rel    1
+CODE                              00001B6E - 00005557          39EA   rel    1
+UDATA3                                 00260000                       rel    1
+IDATA3                                 00260000                       rel    1
+ECSTR                                  00260000                       rel    1
+NO_INIT                                00260000                       dse    0
+IDATA2                            00260000 - 00260015            16   rel    1
+UDATA2                            00260016 - 002607D9           7C4   rel    1
+CSTACK                            00FFFB00 - 00FFFBFF           100   rel    1
+UDATA0                                 00FFFF00                       rel    1
+IDATA0                                 00FFFF00                       rel    1
+IDATA1                            FFFFF400 - FFFFF423            24   rel    1
+UDATA1                            FFFFF424 - FFFFF455            32   rel    1
+DTCRAM                            FFFFF800 - FFFFF80B             C   rel    1
+
+                ****************************************
+                *                                      *
+                *        END OF CROSS REFERENCE        *
+                *                                      *
+                ****************************************
+
+ 20 965 bytes of CODE memory
+     98 bytes of DATA memory
+  2 010 bytes of FARDATA memory
+    256 bytes of HUGEDATA memory
+
+Errors: none
+Warnings: none
+

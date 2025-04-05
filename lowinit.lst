@@ -1,0 +1,105 @@
+##############################################################################
+#                                                                            #
+# IAR H8 C-Compiler V1.53F/WIN                                               #
+#                                                                            #
+#       Compile time  =  19/Jun/2003  11:41:57                               #
+#       Target option =  H8S/2300                                            #
+#       Memory model  =  large                                               #
+#       Source file   =  h:\jobs\eumedic3\lowinit.c                          #
+#       List file     =  h:\jobs\eumedic3\debug\list\lowinit.lst             #
+#       Object file   =  h:\jobs\eumedic3\debug\obj\lowinit.r37              #
+#       Command line  =  -v3 -ml -OH:\Jobs\Eumedic3\Debug\Obj\ -RCODE -s9    #
+#                        -um0I0 -e -K -g -LH:\Jobs\Eumedic3\Debug\List\ -q   #
+#                        -t8 -IC:\IAR\EW23\h8\inc\                           #
+#                        H:\Jobs\Eumedic3\Lowinit.c                          #
+#                                                                            #
+#                           Copyright 2002 IAR Systems. All rights reserved. #
+##############################################################################
+
+   \                     	NAME	lowinit(17)
+   \                     	RSEG	RCODE(1)
+   \                     	PUBLIC	low_level_init
+   \                     	EXTERN	?CLH8SL_1_42_L00
+   \                     	RSEG	RCODE
+      1          
+      2          /*
+      3           * low_level_init makes it possible to customize 
+      4           * initialization before main function is executed.
+      5           *
+      6           *
+      7           * Copyright:      1996-1998 IAR Systems. All rights reserved. 
+      8           *
+      9           * Archived:       $Revision: 1.4 $ 
+     10           *
+     11           * Created: 10/Sep/96  ITHA
+     12           *
+     13           */
+     14          
+     15          #pragma language=extended
+     16          
+     17          #pragma codeseg(RCODE)
+     18          
+     19          
+     20          #include "hardware.h"
+     21          
+     22          
+     23          #if ((__TID__ & 0x0F) == 0x00)
+     24          
+     25          /* small memory model           */
+     26          unsigned char near_func low_level_init (void)
+     27          
+     28          #else
+     29          
+     30          /* large and huge memory models */
+     31          unsigned char far_func low_level_init (void)
+     32          
+     33          #endif
+     34          
+     35            {
+   \                     low_level_init:
+     36              /*==================================*/
+     37              /*  Check your watch dog if needed  */
+     38              /*==================================*/
+     39              
+     40              /*==================================*/
+     41              /*  Init I/O which must be enabled  */
+     42              /*  before segment initializations  */
+     43              /*  (as address lines).             */
+     44              /*==================================*/
+     45          
+     46              /* set Bus Controller for no program wait states */
+     47                  wcrh = 0;
+   \   00000000   18EE               SUB.B   R6L,R6L
+   \   00000002   6A8EFED2           MOV.B   R6L,@0xFFFFFED2
+     48                  wcrl = 0;
+   \   00000006   6A8EFED3           MOV.B   R6L,@0xFFFFFED3
+     49                  astcr = 0; /* All areas are two state access. */
+   \   0000000A   6A8EFED1           MOV.B   R6L,@0xFFFFFED1
+     50          
+     51          
+     52          
+     53              pgddr = CS0 | CS1 ; /* turn on the [CS0], CS1 signals - for our external RAM (and leave CS0 on) */
+   \   0000000E   FE18               MOV.B   #24,R6L
+   \   00000010   6A8EFEBF           MOV.B   R6L,@0xFFFFFEBF
+     54          
+     55          
+     56          
+     57                           
+     58              /*==================================*/
+     59              /* Choose if segment initialization */
+     60              /* should be done or not.           */
+     61              /* Return: 0 to omit seg_init       */
+     62              /*         1 to run seg_init        */
+     63              /*==================================*/
+     64              return (1);
+   \   00000014   FE01               MOV.B   #1,R6L
+     65            }
+   \   00000016   5470               RTS     
+   \                     	END
+
+Errors: none
+Warnings: none
+Code size: 24
+Constant size: 0
+Static variable size: 0
+

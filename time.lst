@@ -1,0 +1,427 @@
+##############################################################################
+#                                                                            #
+# IAR H8 C-Compiler V1.53F/WIN                                               #
+#                                                                            #
+#       Compile time  =  19/Jun/2003  11:42:03                               #
+#       Target option =  H8S/2300                                            #
+#       Memory model  =  large                                               #
+#       Source file   =  h:\jobs\eumedic3\time.c                             #
+#       List file     =  h:\jobs\eumedic3\debug\list\time.lst                #
+#       Object file   =  h:\jobs\eumedic3\debug\obj\time.r37                 #
+#       Command line  =  -v3 -ml -OH:\Jobs\Eumedic3\Debug\Obj\ -RCODE -s9    #
+#                        -um0I0 -e -K -g -LH:\Jobs\Eumedic3\Debug\List\ -q   #
+#                        -t8 -IC:\IAR\EW23\h8\inc\ H:\Jobs\Eumedic3\time.c   #
+#                                                                            #
+#                           Copyright 2002 IAR Systems. All rights reserved. #
+##############################################################################
+
+   \                     	NAME	time(17)
+   \                     	RSEG	CODE(1)
+   \                     	RSEG	IDATA1(1)
+   \                     	RSEG	CDATA1(1)
+   \                     	PUBLIC	stop_watch_seconds
+   \                     	PUBLIC	stop_watch_start
+   \                     	PUBLIC	stop_watch_time
+   \                     	PUBLIC	time_low
+   \                     	PUBLIC	timer_done
+   \                     	PUBLIC	timer_go
+   \                     	PUBLIC	timer_init
+   \                     	PUBLIC	timer_reset
+   \                     	PUBLIC	timer_seconds
+   \                     	PUBLIC	wait
+   \                     	EXTERN	?UL_DIV_L03
+   \                     	EXTERN	?SL_DIV_L03
+   \                     	EXTERN	?CLH8SL_1_42_L00
+   \                     	RSEG	CODE
+      1          
+      2          
+      3          /*
+      4          
+      5          DESCRIPTION:  Millisecond timing.
+      6          AUTHOR  : Karl Lam
+      7          DATE    : 4/10/2000
+      8          
+      9          History:                                                                                                                                                                                
+     10          --------------
+     11          */
+     12          
+     13          
+     14          
+     15          
+     16          
+     17          
+     18          #pragma language=extended       /* Enable use of extended keywords */
+     19          
+     20          #include <inh8.h>    /* intrisics */
+     21          
+     22          #include "hardware.h"
+     23          #include "time.h"
+     24          #include "general.h"
+     25          
+     26          //#include "debug.h" /* */
+     27          
+     28          
+     29          
+     30          /* These ones are in the near area: 16 bit addressable. */
+     31          #pragma memory=near
+     32          
+     33          /* These two are the system time.  [2^48 Ms == 9000 YEARS!] */
+     34          //volatile unsigned short time_high=0; 
+     35          volatile unsigned long time_low=0;
+     36          
+     37          #pragma memory=default
+     38          
+     39          
+     40          
+     41          
+     42          /******************************************************************
+     43          NAME            : wait
+     44          PURPOSE         : Waits for a number of milliseconds, swapping while it waits.
+     45                                    It will always swap out before testing
+     46          PARAMETERS      : long ms: The No. of milli-seconds to wait.
+     47          RETURNS         : NONE
+     48          SIDE-EFFECTS: NONE
+     49          CALLED FROM : 
+     50          *********************************************************************/
+     51          
+     52          
+     53          void wait (long ms)
+     54          {
+   \                     wait:
+   \   00000000   1B97               SUBS.L  #4,ER7
+     55             big_time then;
+     56          
+     57          
+     58             /* read the time now */
+     59             then . time_low = time_low;
+   \   00000002   01006B05           MOV.L   @time_low:16,ER5
+   \            ....    
+   \   00000008   010069F5           MOV.L   ER5,@SP
+     60                
+     61             /* add the milliseconds value to it */
+     62             then.time_low += ms;
+   \   0000000C   0AE5               ADD.L   ER6,ER5
+   \   0000000E   010069F5           MOV.L   ER5,@SP
+   \                     ?0001:
+     63                
+     64             /* do the wait with a comparison of the time */
+     65             
+     66                  while(1)
+     67                  {
+     68                          sleep();   /* Only need to wake when there's something to do... */
+   \   00000012   0180               SLEEP   
+     69          
+     70                          if ( ( time_low >= then.time_low ) /*&& ( time_high == then.time_high )*/ )
+   \   00000014   01006B06           MOV.L   @time_low:16,ER6
+   \            ....    
+   \   0000001A   01006975           MOV.L   @SP,ER5
+   \   0000001E   1FD6               CMP.L   ER5,ER6
+   \   00000020   45F0               BCS     ?0001
+     71                                  break;
+     72                  }
+     73          }
+   \   00000022   0B97               ADDS.L  #4,ER7
+   \   00000024   5470               RTS     
+     74          
+     75          
+     76          
+     77          /*-------------------**
+     78          **  Timer 'object' **
+     79          **-------------------*/
+     80          
+     81          
+     82          
+     83          /******************************************************************
+     84          NAME            : timer_init
+     85          PURPOSE         : Set up a timer with a period and set it's base time to now.
+     86          PARAMETERS      : timer* t : Pointer to the timer.
+     87                                    unsigned long period : The period to initialise it with.
+     88          RETURNS         : NONE
+     89          SIDE-EFFECTS: NONE
+     90          CALLED FROM : 
+     91          *********************************************************************/
+     92          
+     93          void timer_init(timer* t, unsigned long period)
+     94          {
+   \                     timer_init:
+     95                  /* Set the period for the timer. */
+     96                  t->period  = period;
+   \   00000026   01006FE5           MOV.L   ER5,@(6,ER6)
+   \            0006    
+     97          
+     98                  /* Set the basetime for the timer */
+     99                  //INTS_OFF;
+    100                  t->base . time_low  = time_low;
+   \   0000002C   01006B05           MOV.L   @time_low:16,ER5
+   \            ....    
+   \   00000032   010069E5           MOV.L   ER5,@ER6
+    101                  //t->base . time_high = time_high;
+    102                  //INTS_ON;
+    103          }       
+   \   00000036   5470               RTS     
+    104          
+    105          /******************************************************************
+    106          NAME            : timer_go
+    107          PURPOSE         : Set the timer timing.
+    108          PARAMETERS      : timer* t : Pointer to the timer.
+    109          RETURNS         : NONE
+    110          SIDE-EFFECTS: NONE
+    111          CALLED FROM : 
+    112          *********************************************************************/
+    113          
+    114          void timer_go(timer* t)
+    115          {
+   \                     timer_go:
+   \   00000038   01006DF0           PUSH.L  ER0
+   \   0000003C   6DF4               PUSH.W  R4
+   \   0000003E   1B97               SUBS.L  #4,ER7
+    116             big_time now;
+    117          
+    118             /* read the time NOW */
+    119             //INTS_OFF;
+    120          
+    121             now . time_low = time_low;
+   \   00000040   01006B05           MOV.L   @time_low:16,ER5
+   \            ....    
+   \   00000046   010069F5           MOV.L   ER5,@SP
+    122             //now . time_high = time_high;
+    123          
+    124             /* add the period  to it */
+    125          
+    126             now.time_low += t->period;
+   \   0000004A   01006F65           MOV.L   @(6,ER6),ER5
+   \            0006    
+   \   00000050   01006970           MOV.L   @SP,ER0
+   \   00000054   0AD0               ADD.L   ER5,ER0
+   \   00000056   010069F0           MOV.L   ER0,@SP
+    127             //if (read_ccr() & 0x1)     /* if the carry bit set then increment the high word */
+    128             //   now.time_high++;
+    129          
+    130             /* set the timer */
+    131             t->base = now;
+   \   0000005A   0FF5               MOV.L   SP,ER5
+   \   0000005C   FC02               MOV.B   #2,R4L
+   \                     ?0013:
+   \   0000005E   6D50               MOV.W   @ER5+,R0
+   \   00000060   69E0               MOV.W   R0,@ER6
+   \   00000062   0B86               ADDS    #2,ER6
+   \   00000064   1A0C               DEC.B   R4L
+   \   00000066   46F6               BNE     ?0013
+    132             //INTS_ON;  /* in the wrong place? */
+    133          
+    134          }
+   \   00000068   0B97               ADDS.L  #4,ER7
+   \   0000006A   6D74               POP.W   R4
+   \   0000006C   01006D70           POP.L   ER0
+   \   00000070   5470               RTS     
+    135          
+    136          
+    137          /******************************************************************
+    138          NAME            : timer_done
+    139          PURPOSE         : Return whether the time has passed.
+    140          PARAMETERS      : timer* t : Pointer to the timer.
+    141          RETURNS         : TRUE if the timer has timed out.
+    142          SIDE-EFFECTS: NONE
+    143          CALLED FROM : 
+    144          *********************************************************************/
+    145          
+    146          
+    147          char timer_done(timer* t)
+    148          {
+   \                     timer_done:
+   \   00000072   01006DF0           PUSH.L  ER0
+    149                  register char done=0;
+   \   00000076   18DD               SUB.B   R5L,R5L
+    150          
+    151                  //INTS_OFF;
+    152                  if ( ( time_low >= t->base.time_low ) /*&& ( time_high == t-> base.time_high )*/ )
+   \   00000078   01006960           MOV.L   @ER6,ER0
+   \   0000007C   01006B06           MOV.L   @time_low:16,ER6
+   \            ....    
+   \   00000082   1FE0               CMP.L   ER6,ER0
+   \   00000084   4202               BHI     ?0006
+    153                          done = TRUE;
+   \   00000086   FD01               MOV.B   #1,R5L
+   \                     ?0006:
+    154                  //else if ( time_high > t-> base.time_high )
+    155                  //      done = TRUE;
+    156                  //INTS_ON;
+    157                  return done; 
+   \   00000088   0CDE               MOV.B   R5L,R6L
+    158          }
+   \   0000008A   01006D70           POP.L   ER0
+   \   0000008E   5470               RTS     
+    159           
+    160          
+    161          /******************************************************************
+    162          NAME            : timer_seconds
+    163          PURPOSE         : Return the number of seconds left to run on the timer.
+    164          COMMENT         : Only returns meaningful numbers up to 25 day periods!!
+    165          PARAMETERS      : timer* t : Pointer to the timer.
+    166          RETURNS         : TRUE if the timer has timed out.
+    167          SIDE-EFFECTS: NONE
+    168          CALLED FROM : 
+    169          *********************************************************************/
+    170          
+    171          
+    172          long timer_seconds(timer* t)
+    173          {
+   \                     timer_seconds:
+    174             long time_left;
+    175             time_left = t->base.time_low - time_low;
+   \   00000090   01006965           MOV.L   @ER6,ER5
+   \   00000094   01006B06           MOV.L   @time_low:16,ER6
+   \            ....    
+   \   0000009A   1AE5               SUB.L   ER6,ER5
+    176             return time_left / 1000;
+   \   0000009C   0FD6               MOV.L   ER5,ER6
+   \   0000009E   7A050000           MOV.L   #1000,ER5
+   \            03E8    
+   \   000000A4   5E......           JSR     @?SL_DIV_L03
+    177          }
+   \   000000A8   5470               RTS     
+    178          
+    179          
+    180          /******************************************************************
+    181          NAME            : timer_reset
+    182          PURPOSE         : Reset the timer.
+    183          COMMENT         : Only returns meaningful numbers up to 25 day periods!!
+    184          PARAMETERS      : timer* t : Pointer to the timer.
+    185          RETURNS         : NONE
+    186          SIDE-EFFECTS: NONE
+    187          CALLED FROM : 
+    188          *********************************************************************/
+    189          
+    190          void timer_reset(timer* t)
+    191          {
+   \                     timer_reset:
+    192            //INTS_OFF;
+    193            t->base.time_low = 0;
+   \   000000AA   1AD5               SUB.L   ER5,ER5
+   \   000000AC   010069E5           MOV.L   ER5,@ER6
+    194            //t->base.time_high = 0;
+    195            //INTS_ON;
+    196          }
+   \   000000B0   5470               RTS     
+    197          
+    198          
+    199          /******************************************************************
+    200          NAME            : timer_advance
+    201          PURPOSE         : Advance the timer by one tick period with no waiting.
+    202          PARAMETERS      : timer* t : Pointer to the timer.
+    203          RETURNS         : NONE
+    204          SIDE-EFFECTS: NONE
+    205          CALLED FROM : 
+    206          *********************************************************************/
+    207          
+    208          static void timer_advance(timer *t)
+    209          {
+   \                     timer_advance:
+   \   000000B2   01006DF0           PUSH.L  ER0
+    210             //INTS_OFF;
+    211             t->base.time_low += t->period;
+   \   000000B6   01006F65           MOV.L   @(6,ER6),ER5
+   \            0006    
+   \   000000BC   01006960           MOV.L   @ER6,ER0
+   \   000000C0   0AD0               ADD.L   ER5,ER0
+   \   000000C2   010069E0           MOV.L   ER0,@ER6
+    212             //if (read_ccr() & 0x1)     /* if the carry bit set then increment the high word */
+    213             //   t->base.time_high++;
+    214             //INTS_ON;
+    215          }
+   \   000000C6   01006D70           POP.L   ER0
+   \   000000CA   5470               RTS     
+    216          
+    217          
+    218          
+    219          /******** STOP WATCH ADDITIONS TO THE TIMER OBJECT **********/
+    220          
+    221          /* Start the stopwatch timing. */
+    222          void stop_watch_start(timer *t)
+    223          {
+   \                     stop_watch_start:
+    224          
+    225                  /* Indicate the stopwatch is going. */
+    226                  t->period  = 1;
+   \   000000CC   1AD5               SUB.L   ER5,ER5
+   \   000000CE   FD01               MOV.B   #1,R5L
+   \   000000D0   01006FE5           MOV.L   ER5,@(6,ER6)
+   \            0006    
+    227          
+    228                  /* Set the basetime for the timer */
+    229                  //INTS_OFF;
+    230                  t->base . time_low  = time_low;
+   \   000000D6   01006B05           MOV.L   @time_low:16,ER5
+   \            ....    
+   \   000000DC   010069E5           MOV.L   ER5,@ER6
+    231                  //t->base . time_high = time_high;
+    232                  //INTS_ON;
+    233          }       
+   \   000000E0   5470               RTS     
+    234          
+    235          
+    236          
+    237          /* [Only works for 50 days from turn on!] */
+    238          long stop_watch_seconds(timer* t)
+    239          {
+   \                     stop_watch_seconds:
+   \   000000E2   01006DF0           PUSH.L  ER0
+    240                  if (t->period)
+   \   000000E6   01006F65           MOV.L   @(6,ER6),ER5
+   \            0006    
+   \   000000EC   471A               BEQ     ?0008
+    241                          return (time_low - t->base.time_low) / 1000;
+   \   000000EE   01006B05           MOV.L   @time_low:16,ER5
+   \            ....    
+   \   000000F4   01006960           MOV.L   @ER6,ER0
+   \   000000F8   1A85               SUB.L   ER0,ER5
+   \   000000FA   0FD6               MOV.L   ER5,ER6
+   \   000000FC   7A050000           MOV.L   #1000,ER5
+   \            03E8    
+   \   00000102   5E......           JSR     @?UL_DIV_L03
+   \   00000106   4002               BRA     ?0009
+   \                     ?0008:
+    242                  return 0;
+   \   00000108   1AE6               SUB.L   ER6,ER6
+    243          }
+   \                     ?0009:
+   \   0000010A   01006D70           POP.L   ER0
+   \   0000010E   5470               RTS     
+    244          
+    245          /* [Only works for 50 days from turn on!] */
+    246          long stop_watch_time(timer* t)
+    247          {
+   \                     stop_watch_time:
+   \   00000110   01006DF0           PUSH.L  ER0
+    248                  if (t->period)
+   \   00000114   01006F65           MOV.L   @(6,ER6),ER5
+   \            0006    
+   \   0000011A   4710               BEQ     ?0011
+    249                          return (time_low - t->base.time_low);
+   \   0000011C   01006B05           MOV.L   @time_low:16,ER5
+   \            ....    
+   \   00000122   01006960           MOV.L   @ER6,ER0
+   \   00000126   1A85               SUB.L   ER0,ER5
+   \   00000128   0FD6               MOV.L   ER5,ER6
+   \   0000012A   4002               BRA     ?0012
+   \                     ?0011:
+    250                  return 0;
+   \   0000012C   1AE6               SUB.L   ER6,ER6
+    251          }
+   \                     ?0012:
+   \   0000012E   01006D70           POP.L   ER0
+   \   00000132   5470               RTS     
+    252          
+   \                     	RSEG	IDATA1
+   \                     time_low:
+   \                     	DS.B	4
+   \                     	RSEG	CDATA1
+   \                     	DC.L	0
+   \                     	END
+
+Errors: none
+Warnings: none
+Code size: 308
+Constant size: 4
+Static variable size: 4
+

@@ -1,0 +1,475 @@
+##############################################################################
+#                                                                            #
+# IAR H8 C-Compiler V1.53F/WIN                                               #
+#                                                                            #
+#       Compile time  =  19/Jun/2003  11:41:47                               #
+#       Target option =  H8S/2300                                            #
+#       Memory model  =  large                                               #
+#       Source file   =  h:\jobs\eumedic3\access.c                           #
+#       List file     =  h:\jobs\eumedic3\debug\list\access.lst              #
+#       Object file   =  h:\jobs\eumedic3\debug\obj\access.r37               #
+#       Command line  =  -v3 -ml -OH:\Jobs\Eumedic3\Debug\Obj\ -RCODE -s9    #
+#                        -um0I0 -e -K -g -LH:\Jobs\Eumedic3\Debug\List\ -q   #
+#                        -t8 -IC:\IAR\EW23\h8\inc\                           #
+#                        H:\Jobs\Eumedic3\access.c                           #
+#                                                                            #
+#                           Copyright 2002 IAR Systems. All rights reserved. #
+##############################################################################
+
+   \                     	NAME	access(17)
+   \                     	RSEG	CODE(1)
+   \                     	RSEG	CONST(1)
+   \                     	RSEG	UDATA2(1)
+   \                     	PUBLIC	binary_coded_quartal
+   \                     	PUBLIC	crypt_acc
+   \                     	PUBLIC	encrypt
+   \                     	PUBLIC	key_func
+   \                     	EXTERN	?CLH8SL_1_42_L00
+   \                     	RSEG	CODE
+      1          /*
+      2          
+      3          
+      4          Copyright 2001 Eumedic Ltd.
+      5          
+      6          */
+      7          
+      8          /********************* LOOKUP TABLE ********************************/
+      9          static const char lookup[] =
+     10          {
+     11                    0, 94,188,226, 97, 63,221,131,194,156,126, 32,163,253, 31, 65, //|   Make no changes!
+     12                  157,195, 33,127,252,162, 64, 30, 95,  1,227,189, 62, 96,130,220, //|   To this table!
+     13                   35,125,159,193, 66, 28,254,160,225,191, 93,  3,128,222, 60, 98, //|
+     14                  190,224,  2, 92,223,129, 99, 61,124, 34,192,158, 29, 67,161,255, //|
+     15                   70, 24,250,164, 39,121,155,197,132,218, 56,102,229,187, 89,  7, //|
+     16                  219,133,103, 57,186,228,  6, 88, 25, 71,165,251,120, 38,196,154, //|
+     17                  101, 59,217,135,  4, 90,184,230,167,249, 27, 69,198,152,122, 36, //|
+     18                  248,166, 68, 26,153,199, 37,123, 58,100,134,216, 91,  5,231,185, //|
+     19                  140,210, 48,110,237,179, 81, 15, 78, 16,242,172, 47,113,147,205, //|
+     20                   17, 79,173,243,112, 46,204,146,211,141,111, 49,178,236, 14, 80, //|
+     21                  175,241, 19, 77,206,144,114, 44,109, 51,209,143, 12, 82,176,238, //|
+     22                   50,108,142,208, 83, 13,239,177,240,174, 76, 18,145,207, 45,115, //|
+     23                  202,148,118, 40,171,245, 23, 73,  8, 86,180,234,105, 55,213,139, //|
+     24                   87,  9,235,181, 54,104,138,212,149,203, 41,119,244,170, 72, 22, //|
+     25                  233,183, 85, 11,136,214, 52,106, 43,117,151,201, 74, 20,246,168, //|
+     26                  116, 42,200,150, 21, 75,169,247,182,232, 10, 84,215,137,107, 53, //|
+     27          };      
+     28                                                                                                                                           
+     29          char crypt_acc; 
+     30          
+     31          /******************************************************************
+     32          NAME            : 
+     33          PURPOSE         : .
+     34          PARAMETERS      : NONE
+     35          RETURNS         : NONE
+     36          SIDE-EFFECTS: 
+     37          CALLED FROM :
+     38          *********************************************************************/
+     39          void encrypt(char byte)
+     40          {
+   \                     encrypt:
+     41                  crypt_acc = lookup[crypt_acc ^ byte];
+   \   00000000   6A26....           MOV.B   @crypt_acc:32,R6H
+   \            ....    
+   \   00000006   15E6               XOR.B   R6L,R6H
+   \   00000008   0C6E               MOV.B   R6H,R6L
+   \   0000000A   1756               EXTU.W  R6
+   \   0000000C   17F6               EXTS.L  ER6
+   \   0000000E   78606A2D           MOV.B   @(lookup:32,ER6),R5L
+   \            ........
+   \   00000016   6AAD....           MOV.B   R5L,@crypt_acc:32
+   \            ....    
+     42          }
+   \   0000001C   5470               RTS     
+     43          
+     44          /* 
+     45                  Return a 32-bit result in 'BCQ' given a 16-bit number. 
+     46                  each 4-bits represents in a hex digit (range 0-3)
+     47                  2 bits of the 16-bit number. 
+     48                  When printed as a hex number, gives a 'quartal' representation of val.
+     49          
+     50          */
+     51          unsigned long binary_coded_quartal(unsigned short val)
+     52          {
+   \                     binary_coded_quartal:
+   \   0000001E   6DF0               PUSH.W  R0
+   \   00000020   6DF1               PUSH.W  R1
+   \   00000022   0D60               MOV.W   R6,R0
+     53                  unsigned long acc = 0;
+     54                  char i;
+     55                  for (i=8; i; i--)
+   \   00000024   1AE6               SUB.L   ER6,ER6
+   \   00000026   F908               MOV.B   #8,R1L
+   \                     ?0001:
+   \   00000028   0C99               MOV.B   R1L,R1L
+   \   0000002A   471A               BEQ     ?0000
+     56                  {
+     57                          acc <<= 4;
+   \   0000002C   10F6               SHAL.L  #2,ER6
+   \   0000002E   10F6               SHAL.L  #2,ER6
+     58                          acc     |= ( (val >> 14) & 0x3) ; /* mask off top most 2 bits and put in result */
+   \   00000030   0D05               MOV.W   R0,R5
+   \   00000032   F10E               MOV.B   #14,R1H
+   \                     ?0004:
+   \   00000034   1115               SHLR.W  R5
+   \   00000036   1A01               DEC.B   R1H
+   \   00000038   46FA               BNE     ?0004
+   \   0000003A   1775               EXTU.L  ER5
+   \   0000003C   01F06456           OR.L    ER5,ER6
+     59                          val <<= 2;                       /* shift up next 2 bits */
+   \   00000040   10D0               SHAL.W  #2,R0
+   \   00000042   89FF               ADD.B   #-1,R1L
+   \   00000044   40E2               BRA     ?0001
+   \                     ?0000:
+     60                  }
+     61                  return(acc);
+     62          }
+   \   00000046   6D71               POP.W   R1
+   \   00000048   6D70               POP.W   R0
+   \   0000004A   5470               RTS     
+     63          
+     64          
+     65          /* 
+     66                  Take the two elements of the code presented to the user and workout 
+     67                  what the key for more credit should be.
+     68                  At the moment this is just some XORing. 
+     69          */
+     70          unsigned short key_func(unsigned long w32 , char w8)
+     71          {
+   \                     key_func:
+   \   0000004C   01006DF0           PUSH.L  ER0
+   \   00000050   6DF1               PUSH.W  R1
+   \   00000052   0FE0               MOV.L   ER6,ER0
+   \   00000054   0CDE               MOV.B   R5L,R6L
+     72                  unsigned short val;
+     73                  char temp;
+     74          
+     75                  /* combine the 5 bytes of the code to produce one byte. */
+     76                  crypt_acc = 0;
+   \   00000056   1866               SUB.B   R6H,R6H
+   \   00000058   6AA6....           MOV.B   R6H,@crypt_acc:32
+   \            ....    
+     77                  encrypt(w8);
+   \   0000005E   55A0               BSR     encrypt
+     78                  encrypt(w32);
+   \   00000060   0D06               MOV.W   R0,R6
+   \   00000062   559C               BSR     encrypt
+     79                  w32>>=8;
+   \   00000064   FE08               MOV.B   #8,R6L
+   \                     ?0005:
+   \   00000066   1130               SHLR.L  ER0
+   \   00000068   1A0E               DEC.B   R6L
+   \   0000006A   46FA               BNE     ?0005
+     80                  encrypt(w32);
+   \   0000006C   0D06               MOV.W   R0,R6
+   \   0000006E   5590               BSR     encrypt
+     81                  w32>>=8;
+   \   00000070   FE08               MOV.B   #8,R6L
+   \                     ?0006:
+   \   00000072   1130               SHLR.L  ER0
+   \   00000074   1A0E               DEC.B   R6L
+   \   00000076   46FA               BNE     ?0006
+     82                  encrypt(w32);
+   \   00000078   0D06               MOV.W   R0,R6
+   \   0000007A   5584               BSR     encrypt
+     83                  temp = crypt_acc;
+   \   0000007C   6A29....           MOV.B   @crypt_acc:32,R1L
+   \            ....    
+     84                  w32>>=8;
+   \   00000082   FE08               MOV.B   #8,R6L
+   \                     ?0007:
+   \   00000084   1130               SHLR.L  ER0
+   \   00000086   1A0E               DEC.B   R6L
+   \   00000088   46FA               BNE     ?0007
+     85                  encrypt(w32);
+   \   0000008A   0D06               MOV.W   R0,R6
+   \   0000008C   5C00FF70           BSR     encrypt
+     86          
+     87                  /* Produce 2 bytes of key. */
+     88                  val = crypt_acc + (temp << 8);
+   \   00000090   0C9E               MOV.B   R1L,R6L
+   \   00000092   1756               EXTU.W  R6
+   \   00000094   0CE6               MOV.B   R6L,R6H
+   \   00000096   18EE               SUB.B   R6L,R6L
+   \   00000098   6A2D....           MOV.B   @crypt_acc:32,R5L
+   \            ....    
+   \   0000009E   1755               EXTU.W  R5
+   \   000000A0   0956               ADD.W   R5,R6
+     89          
+     90          //old code
+     91          //      val = (w8 << 8) | ( (char)w32 & 0xFF);
+     92          //      val ^= KEY_FUNC_CYPHER;
+     93          
+     94                  return val ;
+     95          }
+   \   000000A2   6D71               POP.W   R1
+   \   000000A4   01006D70           POP.L   ER0
+   \   000000A8   5470               RTS     
+   \                     	RSEG	CONST
+   \                     lookup:
+   \                     	DC.B	0
+   \                     	DC.B	'^'
+   \                     	DC.B	188
+   \                     	DC.B	226
+   \                     	DC.B	'a'
+   \                     	DC.B	'?'
+   \                     	DC.B	221
+   \                     	DC.B	131
+   \                     	DC.B	194
+   \                     	DC.B	156
+   \                     	DC.B	'~'
+   \                     	DC.B	' '
+   \                     	DC.B	163
+   \                     	DC.B	253
+   \                     	DC.B	31
+   \                     	DC.B	'A'
+   \                     	DC.B	157
+   \                     	DC.B	195
+   \                     	DC.B	'!'
+   \                     	DC.B	127
+   \                     	DC.B	252
+   \                     	DC.B	162
+   \                     	DC.B	'@'
+   \                     	DC.B	30
+   \                     	DC.B	'_'
+   \                     	DC.B	1
+   \                     	DC.B	227
+   \                     	DC.B	189
+   \                     	DC.B	'>'
+   \                     	DC.B	'`'
+   \                     	DC.B	130
+   \                     	DC.B	220
+   \                     	DC.B	'#'
+   \                     	DC.B	'}'
+   \                     	DC.B	159
+   \                     	DC.B	193
+   \                     	DC.B	'B'
+   \                     	DC.B	28
+   \                     	DC.B	254
+   \                     	DC.B	160
+   \                     	DC.B	225
+   \                     	DC.B	191
+   \                     	DC.B	']'
+   \                     	DC.B	3
+   \                     	DC.B	128
+   \                     	DC.B	222
+   \                     	DC.B	'<'
+   \                     	DC.B	'b'
+   \                     	DC.B	190
+   \                     	DC.B	224
+   \                     	DC.B	2
+   \                     	DC.B	92
+   \                     	DC.B	223
+   \                     	DC.B	129
+   \                     	DC.B	'c'
+   \                     	DC.B	'='
+   \                     	DC.B	'|'
+   \                     	DC.B	'"'
+   \                     	DC.B	192
+   \                     	DC.B	158
+   \                     	DC.B	29
+   \                     	DC.B	'C'
+   \                     	DC.B	161
+   \                     	DC.B	255
+   \                     	DC.B	'F'
+   \                     	DC.B	24
+   \                     	DC.B	250
+   \                     	DC.B	164
+   \                     	DC.B	''''
+   \                     	DC.B	'y'
+   \                     	DC.B	155
+   \                     	DC.B	197
+   \                     	DC.B	132
+   \                     	DC.B	218
+   \                     	DC.B	'8'
+   \                     	DC.B	'f'
+   \                     	DC.B	229
+   \                     	DC.B	187
+   \                     	DC.B	'Y'
+   \                     	DC.B	7
+   \                     	DC.B	219
+   \                     	DC.B	133
+   \                     	DC.B	'g'
+   \                     	DC.B	'9'
+   \                     	DC.B	186
+   \                     	DC.B	228
+   \                     	DC.B	6
+   \                     	DC.B	'X'
+   \                     	DC.B	25
+   \                     	DC.B	'G'
+   \                     	DC.B	165
+   \                     	DC.B	251
+   \                     	DC.B	'x'
+   \                     	DC.B	'&'
+   \                     	DC.B	196
+   \                     	DC.B	154
+   \                     	DC.B	'e'
+   \                     	DC.B	';'
+   \                     	DC.B	217
+   \                     	DC.B	135
+   \                     	DC.B	4
+   \                     	DC.B	'Z'
+   \                     	DC.B	184
+   \                     	DC.B	230
+   \                     	DC.B	167
+   \                     	DC.B	249
+   \                     	DC.B	27
+   \                     	DC.B	'E'
+   \                     	DC.B	198
+   \                     	DC.B	152
+   \                     	DC.B	'z'
+   \                     	DC.B	'$'
+   \                     	DC.B	248
+   \                     	DC.B	166
+   \                     	DC.B	'D'
+   \                     	DC.B	26
+   \                     	DC.B	153
+   \                     	DC.B	199
+   \                     	DC.B	'%'
+   \                     	DC.B	'{'
+   \                     	DC.B	':'
+   \                     	DC.B	'd'
+   \                     	DC.B	134
+   \                     	DC.B	216
+   \                     	DC.B	'['
+   \                     	DC.B	5
+   \                     	DC.B	231
+   \                     	DC.B	185
+   \                     	DC.B	140
+   \                     	DC.B	210
+   \                     	DC.B	'0'
+   \                     	DC.B	'n'
+   \                     	DC.B	237
+   \                     	DC.B	179
+   \                     	DC.B	'Q'
+   \                     	DC.B	15
+   \                     	DC.B	'N'
+   \                     	DC.B	16
+   \                     	DC.B	242
+   \                     	DC.B	172
+   \                     	DC.B	'/'
+   \                     	DC.B	'q'
+   \                     	DC.B	147
+   \                     	DC.B	205
+   \                     	DC.B	17
+   \                     	DC.B	'O'
+   \                     	DC.B	173
+   \                     	DC.B	243
+   \                     	DC.B	'p'
+   \                     	DC.B	'.'
+   \                     	DC.B	204
+   \                     	DC.B	146
+   \                     	DC.B	211
+   \                     	DC.B	141
+   \                     	DC.B	'o'
+   \                     	DC.B	'1'
+   \                     	DC.B	178
+   \                     	DC.B	236
+   \                     	DC.B	14
+   \                     	DC.B	'P'
+   \                     	DC.B	175
+   \                     	DC.B	241
+   \                     	DC.B	19
+   \                     	DC.B	'M'
+   \                     	DC.B	206
+   \                     	DC.B	144
+   \                     	DC.B	'r'
+   \                     	DC.B	','
+   \                     	DC.B	'm'
+   \                     	DC.B	'3'
+   \                     	DC.B	209
+   \                     	DC.B	143
+   \                     	DC.B	12
+   \                     	DC.B	'R'
+   \                     	DC.B	176
+   \                     	DC.B	238
+   \                     	DC.B	'2'
+   \                     	DC.B	'l'
+   \                     	DC.B	142
+   \                     	DC.B	208
+   \                     	DC.B	'S'
+   \                     	DC.B	13
+   \                     	DC.B	239
+   \                     	DC.B	177
+   \                     	DC.B	240
+   \                     	DC.B	174
+   \                     	DC.B	'L'
+   \                     	DC.B	18
+   \                     	DC.B	145
+   \                     	DC.B	207
+   \                     	DC.B	'-'
+   \                     	DC.B	's'
+   \                     	DC.B	202
+   \                     	DC.B	148
+   \                     	DC.B	'v'
+   \                     	DC.B	'('
+   \                     	DC.B	171
+   \                     	DC.B	245
+   \                     	DC.B	23
+   \                     	DC.B	'I'
+   \                     	DC.B	8
+   \                     	DC.B	'V'
+   \                     	DC.B	180
+   \                     	DC.B	234
+   \                     	DC.B	'i'
+   \                     	DC.B	'7'
+   \                     	DC.B	213
+   \                     	DC.B	139
+   \                     	DC.B	'W'
+   \                     	DC.B	9
+   \                     	DC.B	235
+   \                     	DC.B	181
+   \                     	DC.B	'6'
+   \                     	DC.B	'h'
+   \                     	DC.B	138
+   \                     	DC.B	212
+   \                     	DC.B	149
+   \                     	DC.B	203
+   \                     	DC.B	')'
+   \                     	DC.B	'w'
+   \                     	DC.B	244
+   \                     	DC.B	170
+   \                     	DC.B	'H'
+   \                     	DC.B	22
+   \                     	DC.B	233
+   \                     	DC.B	183
+   \                     	DC.B	'U'
+   \                     	DC.B	11
+   \                     	DC.B	136
+   \                     	DC.B	214
+   \                     	DC.B	'4'
+   \                     	DC.B	'j'
+   \                     	DC.B	'+'
+   \                     	DC.B	'u'
+   \                     	DC.B	151
+   \                     	DC.B	201
+   \                     	DC.B	'J'
+   \                     	DC.B	20
+   \                     	DC.B	246
+   \                     	DC.B	168
+   \                     	DC.B	't'
+   \                     	DC.B	'*'
+   \                     	DC.B	200
+   \                     	DC.B	150
+   \                     	DC.B	21
+   \                     	DC.B	'K'
+   \                     	DC.B	169
+   \                     	DC.B	247
+   \                     	DC.B	182
+   \                     	DC.B	232
+   \                     	DC.B	10
+   \                     	DC.B	'T'
+   \                     	DC.B	215
+   \                     	DC.B	137
+   \                     	DC.B	'k'
+   \                     	DC.B	'5'
+   \                     	RSEG	UDATA2
+   \                     crypt_acc:
+   \                     	DS.B	1
+   \                     	END
+
+Errors: none
+Warnings: none
+Code size: 170
+Constant size: 256
+Static variable size: 1
+

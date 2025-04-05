@@ -1,0 +1,64 @@
+/*
+
+ Micro-Robotics Ltd.
+
+
+THIS FILE IS THE PROPERTY OF MICRO-ROBOTICS LTD.
+IT MAY NOT BE USED, COPIED OR EDITTED WITHOUT THE 
+EXPRESS PRIOR WRITTEN PERMISSION OF MICRO-ROBOTICS LTD.
+
+Copyright 2000 Micro-Robotics Ltd.
+
+*/
+
+/*
+DESCRIPTION: 	Low level context switching code.
+AUTHOR	: Karl Lam
+DATE	: 4/10/2000
+
+History:																						
+--------------
+*/
+
+
+
+     NAME swapper
+     RSEG CODE(1)
+     PUBLIC stack,set_stack
+     
+
+
+;return the value of the stack pointer.
+;     
+stack 
+	MOV.L ER7,ER6
+	RTS
+	
+;Put the stack in a new place, position in ER6.
+;[Any parameters will be lost to proc that calls this, unless they are copied accross to new stack.]	
+set_stack
+	MOV		ER5, @-ER6 ;push er5 on new stack
+	POP.L ER5		;get the return address from old stack
+	MOV.L ER6,ER7	;change stack
+	PUSH.L ER5		;put return address in the new stack.
+	MOV.L	@(4,ER7),ER5 ;retreive er5
+	RTS
+	
+
+ 
+     
+     
+
+;Vectors.   
+	COMMON  DTCVECT(1)
+	IMPORT transfer1 ;,transfer2
+
+	ORG h'00	 ;start at the start of the DTCVECT segment.
+	DC.W transfer1	 ;The software activated DTC vector.
+	     
+	ORG h'40	 ;TPU_TGI0A vector
+	DC.W transfer1	 ;The frame we are using. 
+	    
+	;ORG h'AC	 ;SCITX2 vector
+	;DC.W transfer2	 ;The frame we are using.     
+	END

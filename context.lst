@@ -1,0 +1,108 @@
+###############################################################################
+#                                                                             #
+#     IAR Systems H8 Assembler V1.53F/WIN 19/Jun/2003  11:41:48               #
+#     Copyright 2001 IAR Systems. All rights reserved.                        #
+#                                                                             #
+#           Target option =  H8S/2300                                         #
+#           Memory model  =  large                                            #
+#           Source file   =  H:\Jobs\Eumedic3\context.s37                     #
+#           List file     =  H:\Jobs\Eumedic3\Debug\List\context.lst          #
+#           Object file   =  H:\Jobs\Eumedic3\Debug\Obj\context.r37           #
+#           Command line  =  -v3 -ml -OH:\Jobs\Eumedic3\Debug\Obj\ -s+ -w+    #
+#                            -M<> -r -LH:\Jobs\Eumedic3\Debug\List\ -t8       #
+#                            -IC:\IAR\EW23\h8\inc\                            #
+#                            H:\Jobs\Eumedic3\context.s37                     #
+#                                                                             #
+###############################################################################
+
+      1    00000000          /*
+      2    00000000          
+      3    00000000           Micro-Robotics Ltd.
+      4    00000000          
+      5    00000000          
+      6    00000000          THIS FILE IS THE PROPERTY OF MICRO-ROBOTICS
+                              LTD.
+      7    00000000          IT MAY NOT BE USED, COPIED OR EDITTED WITHOUT THE
+                              
+      8    00000000          EXPRESS PRIOR WRITTEN PERMISSION OF MICRO-ROBOTICS
+                              LTD.
+      9    00000000          
+     10    00000000          Copyright 2000 Micro-Robotics Ltd.
+     11    00000000          
+     12    00000000          */
+     13    00000000          
+     14    00000000          /*
+     15    00000000          DESCRIPTION:    Low level context switching
+                              code.
+     16    00000000          AUTHOR  : Karl Lam
+     17    00000000          DATE    : 4/10/2000
+     18    00000000          
+     19    00000000          History:                                          
+                                                                               
+                                                                               
+                                                               
+     20    00000000          --------------
+     21    00000000          */
+     22    00000000          
+     23    00000000          
+     24    00000000          
+     25    00000000               NAME swapper
+     26    00000000               RSEG CODE(1)
+     27    00000000               PUBLIC stack,set_stack
+     28    00000000               
+     29    00000000          
+     30    00000000          
+     31    00000000          ;return the value of the stack pointer.
+     32    00000000          ;     
+     33    00000000          stack 
+     34    00000000 0FF6             MOV.L ER7,ER6
+     35    00000002 5470             RTS
+     36    00000004                  
+     37    00000004          ;Put the stack in a new place, position in
+                              ER6.
+     38    00000004          ;[Any parameters will be lost to proc that calls
+                              this, unless they are copied accross to new
+                              stack.]    
+     39    00000004          set_stack
+     40    00000004 01006DE5         MOV             ER5, @-ER6 ;push er5 on
+  new stack
+     41    00000008 01006D75         POP.L ER5               ;get the return
+  address from old stack
+     42    0000000C 0FE7             MOV.L ER6,ER7   ;change stack
+     43    0000000E 01006DF5         PUSH.L ER5              ;put return
+  address in the new stack.
+     44    00000012 01006F75*        MOV.L   @(4,ER7),ER5 ;retreive er5
+     45    00000018 5470             RTS
+     46    0000001A                  
+     47    0000001A          
+     48    0000001A           
+     49    0000001A               
+     50    0000001A               
+     51    0000001A          
+     52    0000001A          ;Vectors.   
+     53    00000000                  COMMON  DTCVECT(1)
+     54    00000000                  IMPORT transfer1 ;,transfer2
+     55    00000000          
+     56    00000000                  ORG h'00         ;start at the start of
+                                                       the DTCVECT segment.
+     57    00000000 ....             DC.W transfer1   ;The software activated
+                                                       DTC vector.
+     58    00000002                       
+     59    00000040                  ORG h'40         ;TPU_TGI0A vector
+     60    00000040 ....             DC.W transfer1   ;The frame we are using.
+                                                       
+     61    00000042                      
+     62    00000042                  ;ORG h'AC        ;SCITX2 vector
+     63    00000042                  ;DC.W transfer2  ;The frame we are using. 
+                                 
+     64    00000042                  END
+##############################
+#          CRC:A492          #
+#        Errors:   0         #
+#        Warnings: 0         #
+#         Bytes: 30          #
+##############################
+
+
+
+

@@ -1,0 +1,467 @@
+##############################################################################
+#                                                                            #
+# IAR H8 C-Compiler V1.53F/WIN                                               #
+#                                                                            #
+#       Compile time  =  19/Jun/2003  11:42:02                               #
+#       Target option =  H8S/2300                                            #
+#       Memory model  =  large                                               #
+#       Source file   =  h:\jobs\eumedic3\serial.c                           #
+#       List file     =  h:\jobs\eumedic3\debug\list\serial.lst              #
+#       Object file   =  h:\jobs\eumedic3\debug\obj\serial.r37               #
+#       Command line  =  -v3 -ml -OH:\Jobs\Eumedic3\Debug\Obj\ -RCODE -s9    #
+#                        -um0I0 -e -K -g -LH:\Jobs\Eumedic3\Debug\List\ -q   #
+#                        -t8 -IC:\IAR\EW23\h8\inc\                           #
+#                        H:\Jobs\Eumedic3\serial.c                           #
+#                                                                            #
+#                           Copyright 2002 IAR Systems. All rights reserved. #
+##############################################################################
+
+   \                     	NAME	serial(17)
+   \                     	RSEG	CODE(1)
+   \                     	COMMON	INTVEC(1)
+   \                     	RSEG	UDATA2(1)
+   \                     	RSEG	IDATA2(1)
+   \                     	RSEG	CDATA2(1)
+   \                     	PUBLIC	control_c_break_allowed
+   \                     	PUBLIC	print_temp
+   \                     	PUBLIC	serial_init
+   \                     	PUBLIC	serial_input_queue
+   \                     	PUBLIC	serial_output_queue
+   \                     	PUBLIC	serial_put
+   \                     	PUBLIC	serial_put_string
+   \                     	PUBLIC	serial_receive_error_service
+   \                     	PUBLIC	serial_transmit_service
+   \                     	PUBLIC	serial_wait_for_output
+   \                     	PUBLIC	serial_wait_for_output_no_swap
+   \                     	PUBLIC	transmit_hs_status
+   \                     	EXTERN	wait
+   \                     	EXTERN	?CLH8SL_1_42_L00
+   \                     	RSEG	CODE
+      1          
+      2          
+      3          /*
+      4          
+      5          DESCRIPTION:   Serial port code + object.
+      6          AUTHOR  : Karl Lam
+      7          DATE    : 4/10/2000
+      8          
+      9          History:                                                                                                                                                                                
+     10          --------------
+     11          Addapted from VM-1 code.
+     12          */
+     13          
+     14          
+     15          /*
+     16          NOTES:
+     17          
+     18          */
+     19          
+     20          
+     21          #pragma language=extended       /* Enable use of extended keywords */
+     22          
+     23          #include <stdio.h>
+     24          #include <inh8.h>
+     25          #include <stdlib.h>
+     26          #include <ctype.h>
+     27          #include <string.h>
+     28          
+     29          #include "hardware.h"
+     30          #include "serial.h"
+     31          
+     32          #include "time.h"
+     33          
+     34          
+     35          #include "general.h"
+     36          
+     37          #include "debug.h" 
+     38          
+     39              
+     40                            
+     41          
+     42          char print_temp[PRINT_TEMP_BUFFER_SIZE]; /* Workspace to print to for use by PRINT macro. */
+     43          
+     44          
+     45          /*
+     46          Note: if handshake is disabled then can comment out housekeeping code for handshake
+     47           in the task swap interrupt to increase efficiency.
+     48          */
+     49          #define USING_CTS 0             /* Enable the handshake input. See above note. */
+     50          #define ALLOW_SWAPS_WHEN_WAITING 0 /* swap out is called when processing awaiting a serial buffer to empty. */
+     51          
+     52          
+     53          
+     54          #if ALLOW_SWAPS_WHEN_WAITING
+     55           #define SWAP_OUT check_break_and_swap()
+     56          #else
+     57           #define SWAP_OUT
+     58          #endif
+     59          
+     60          
+     61          
+     62          char control_c_break_allowed = 0; /* Set when CTRL-C causes a break, rather than being a real char. */
+     63          
+     64          static  char input_buffer [256];
+     65          static  char output_buffer [256];
+     66          
+     67          
+     68          static volatile unsigned char input_head  = 0;
+     69          static          unsigned char input_tail  = 0;
+     70          static          unsigned char output_head = 0;
+     71          static volatile unsigned char output_tail = 0;
+     72          
+     73          char transmit_hs_status = 1; /* gives the status of the transmiter handshake input. 0==Tx has been turned off by HSin */ 
+     74          
+     75          
+     76          
+     77          #define HS_ON_POINT  (256/4)   /* The input buffer size below which the HS output is turned on */
+     78          #define HS_OFF_POINT  (256/4*3) /* The input buffer size above which the HS output is turned off */
+     79          
+     80          /* service the serial output */
+     81          void interrupt [SCI_TXI0] serial_transmit_service()
+     82          {
+   \                     serial_transmit_service:
+   \   00000000   6DF5               PUSH.W  R5
+   \   00000002   01006DF6           PUSH.L  ER6
+     83              char c;
+     84          
+     85          #if USING_CTS
+     86              if (cts0_bit) /* handshake input says 'off' */
+     87                  {
+     88                     sci0_scr0 &= 0xFF - SCR_TIE; /* [Turn off the interrupt] */
+     89                     transmit_hs_status = 0; 
+     90                  } 
+     91          #endif
+     92          
+     93              c = output_buffer[output_tail++];   /* get the char from the buffer and update the pointer */
+   \   00000006   6A2E....           MOV.B   @output_tail:32,R6L
+   \            ....    
+   \   0000000C   0A0E               INC.B   R6L
+   \   0000000E   6AAE....           MOV.B   R6L,@output_tail:32
+   \            ....    
+   \   00000014   1A0E               DEC.B   R6L
+   \   00000016   1756               EXTU.W  R6
+   \   00000018   17F6               EXTS.L  ER6
+   \   0000001A   78606A2D           MOV.B   @(output_buffer:32,ER6),R5L
+   \            ........
+     94          
+     95                  sci0_tdr0 = c;  /* stuff the byte in the TDR */
+   \   00000022   3D7B               MOV.B   R5L,@0xFFFFFF7B
+     96          
+     97              sci0_ssr0 &= 0xFF - TDRE; /* clear the empty flag */
+   \   00000024   7F7C7270           BCLR    #7,@0xFFFFFF7C
+     98          
+     99                  //INTS_ON;      /* Let other ints in. */
+    100          
+    101              if (output_head == output_tail) /* if there are no more chars then disable the transmit interrupt  */
+   \   00000028   6A2E....           MOV.B   @output_head:32,R6L
+   \            ....    
+   \   0000002E   6A26....           MOV.B   @output_tail:32,R6H
+   \            ....    
+   \   00000034   1C6E               CMP.B   R6H,R6L
+   \   00000036   4604               BNE     ?0011
+    102                     sci0_scr0 &= 0xFF - SCR_TIE;  
+   \   00000038   7F7A7270           BCLR    #7,@0xFFFFFF7A
+   \                     ?0011:
+    103          
+    104          }
+   \   0000003C   01006D76           POP.L   ER6
+   \   00000040   6D75               POP.W   R5
+   \   00000042   5670               RTE     
+    105          
+    106          
+    107          #if 0
+    108          /* service the serial input */
+    109          void interrupt [SCI_RXI0] serial_receive_service()
+    110          {
+    111                  char c;
+    112          
+    113                  //sci0_ssr0;    /* must read this before resetting the bit! (this should not get optimised away as it is an sfr.) */
+    114                  sci0_ssr0 &= 0xFF - RDRF; /* clear the received char flag */
+    115          
+    116                  //INTS_ON;      /* Let other ints in. */
+    117          
+    118          
+    119                  /* get the char from the receive reg and put it in the buffer */
+    120                  c = sci0_rdr0;
+    121                  
+    122                  input_buffer[input_head++] = c;
+    123          
+    124          
+    125                  if ( (unsigned char)(input_head - input_tail) >= HS_OFF_POINT)  /* The cast to 'char' avoids promotion of the calc above 8-bit. */
+    126                 rts0_bit = 1;     /* HS output off, please */
+    127          }
+    128          #endif
+    129          
+    130          
+    131          
+    132          /* service the serial input if there is an error */
+    133          void interrupt [SCI_ERI0] serial_receive_error_service()
+    134          {
+   \                     serial_receive_error_service:
+   \   00000044   6DF6               PUSH.W  R6
+    135          
+    136                  sci0_ssr0 &= 0xFF - (ORER|FER|PER); /* clear the received char interrupt flag */
+   \   00000046   2E7C               MOV.B   @0xFFFFFF7C,R6L
+   \   00000048   EEC7               AND.B   #199,R6L
+   \   0000004A   3E7C               MOV.B   R6L,@0xFFFFFF7C
+    137          }
+   \   0000004C   6D76               POP.W   R6
+   \   0000004E   5670               RTE     
+    138          
+    139          
+    140          
+    141          
+    142          /* put a character in the serial buffer */
+    143          /* wait if the buffer is full */
+    144          /* turn on the interrupt if not already on */
+    145          
+    146          
+    147          void serial_put(char c)
+    148          {
+   \                     serial_put:
+   \                     ?0010:
+    149                  while ( (unsigned char) (output_head - output_tail)  == 0xFF)
+   \   00000050   6A26....           MOV.B   @output_head:32,R6H
+   \            ....    
+   \   00000056   6A2D....           MOV.B   @output_tail:32,R5L
+   \            ....    
+   \   0000005C   18D6               SUB.B   R5L,R6H
+   \   0000005E   A6FF               CMP.B   #255,R6H
+   \   00000060   47EE               BEQ     ?0010
+    150                          SWAP_OUT;
+    151          
+    152              INTS_OFF;
+   \   00000062   0480               ORC     #128,CCR
+    153              output_buffer[output_head++] = c;  /* put the char in the buffer and update the pointer */
+   \   00000064   6A2D....           MOV.B   @output_head:32,R5L
+   \            ....    
+   \   0000006A   0A0D               INC.B   R5L
+   \   0000006C   6AAD....           MOV.B   R5L,@output_head:32
+   \            ....    
+   \   00000072   1A0D               DEC.B   R5L
+   \   00000074   1755               EXTU.W  R5
+   \   00000076   17F5               EXTS.L  ER5
+   \   00000078   78506AAE           MOV.B   R6L,@(output_buffer:32,ER5)
+   \            ........
+    154          
+    155                                  #if USING_CTS
+    156                                          if (cts0_bit == 0)  /* handshake in says 'on' */
+    157                                          {
+    158                                             sci0_scr0 |= SCR_TIE; /* turn on the transmit interrupt */
+    159                                             transmit_hs_status = 1;
+    160                                          }
+    161                                          else
+    162                                             transmit_hs_status = 0;
+    163                                  #else
+    164                                          sci0_scr0 |= SCR_TIE; /* turn on the transmit interrupt */
+   \   00000080   7F7A7070           BSET    #7,@0xFFFFFF7A
+    165                                  #endif
+    166                  INTS_ON;
+   \   00000084   067F               ANDC    #127,CCR
+    167          }
+   \   00000086   5470               RTS     
+    168          
+    169          
+    170          #if 0
+    171          /* get a character from the serial input buffer */
+    172          char serial_get()
+    173          {
+    174              char c;
+    175          
+    176                  while (input_head == input_tail) /* wait if empty */
+    177                    SWAP_OUT;
+    178                    
+    179              INTS_OFF;
+    180          
+    181              c = input_buffer[input_tail++];     /* get the char from the buffer and update the pointer */
+    182                  if ( (unsigned char) (input_head - input_tail) < HS_ON_POINT)
+    183                     rts0_bit = 0;         /* HS output on, please */
+    184                  INTS_ON;
+    185          
+    186                  return c;
+    187          }
+    188          
+    189          /* return the value of the charater if there is one in the queue, else return -1 */
+    190          short serial_look()
+    191          {
+    192                  if (serial_input_queue())
+    193                  {
+    194                          return serial_get();
+    195                  }
+    196                  return -1;
+    197          }
+    198          #endif
+    199          
+    200          
+    201          
+    202          /* return the number of characters waiting in the input buffer */
+    203          unsigned char serial_input_queue()
+    204          {
+   \                     serial_input_queue:
+    205             return (unsigned char)(input_head - input_tail);
+   \   00000088   6A2E....           MOV.B   @input_head:32,R6L
+   \            ....    
+   \   0000008E   6A26....           MOV.B   @input_tail:32,R6H
+   \            ....    
+   \   00000094   186E               SUB.B   R6H,R6L
+    206          }
+   \   00000096   5470               RTS     
+    207          
+    208          /* return the number of characters waiting in the output buffer */
+    209          unsigned char serial_output_queue()
+    210          {
+   \                     serial_output_queue:
+   \   00000098   6A26....           MOV.B   @output_head:32,R6H
+   \            ....    
+    211             return output_head - output_tail;
+   \   0000009E   6A2D....           MOV.B   @output_tail:32,R5L
+   \            ....    
+   \   000000A4   0C6E               MOV.B   R6H,R6L
+   \   000000A6   18DE               SUB.B   R5L,R6L
+    212          }
+   \   000000A8   5470               RTS     
+    213          
+    214          /* Wait until all the chars have gone out of the op buffer. */
+    215          void serial_wait_for_output()
+    216          {
+   \                     serial_wait_for_output:
+   \   000000AA   6A26....           MOV.B   @output_head:32,R6H
+   \            ....    
+   \                     ?0012:
+    217             while ((unsigned char)(output_head - output_tail))
+   \   000000B0   6A2D....           MOV.B   @output_tail:32,R5L
+   \            ....    
+   \   000000B6   0C6E               MOV.B   R6H,R6L
+   \   000000B8   18DE               SUB.B   R5L,R6L
+   \   000000BA   46F4               BNE     ?0012
+    218               SWAP_OUT;
+    219          }
+   \   000000BC   5470               RTS     
+    220          
+    221          /* Wait until all the chars have gone out of the op buffer. */
+    222          void serial_wait_for_output_no_swap()
+    223          {
+   \                     serial_wait_for_output_no_swap:
+   \   000000BE   6A26....           MOV.B   @output_head:32,R6H
+   \            ....    
+   \                     ?0015:
+    224             while ((unsigned char)(output_head - output_tail))
+   \   000000C4   6A2D....           MOV.B   @output_tail:32,R5L
+   \            ....    
+   \   000000CA   0C6E               MOV.B   R6H,R6L
+   \   000000CC   18DE               SUB.B   R5L,R6L
+   \   000000CE   46F4               BNE     ?0015
+    225                          ;
+    226          }
+   \   000000D0   5470               RTS     
+    227          
+    228          
+    229          
+    230          /* Send the null-terminated string to the serial */
+    231          void serial_put_string(const char * str)
+    232          {
+   \                     serial_put_string:
+   \   000000D2   01006DF0           PUSH.L  ER0
+   \   000000D6   0FE0               MOV.L   ER6,ER0
+   \                     ?0018:
+    233             while(*str)
+   \   000000D8   680E               MOV.B   @ER0,R6L
+   \   000000DA   4708               BEQ     ?0021
+    234             {
+    235                serial_put(*str++);
+   \   000000DC   6C0E               MOV.B   @ER0+,R6L
+   \   000000DE   5C00FF6E           BSR     serial_put
+    236             }
+    237          }
+   \   000000E2   40F4               BRA     ?0018
+   \                     ?0021:
+   \   000000E4   01006D70           POP.L   ER0
+   \   000000E8   5470               RTS     
+    238          
+    239          
+    240          /* initialise the serial port and set up the buffers */
+    241          void serial_init()
+    242          {
+   \                     serial_init:
+    243             /* init port 0 */
+    244                  mstpcrl &= 0xFF - SCI0_MODULE_STOP; /* SCI are Go! */
+   \   000000EA   7F3D7250           BCLR    #5,@0xFFFFFF3D
+    245          
+    246          /* Serial port initialisation. */
+    247          
+    248          
+    249          
+    250                  //p3ddr = HS_OUT0; /* Turn on the HS out pin. */
+    251                  //p3dr = 0; /* Turn on the HS out . */
+    252          
+    253          
+    254                  sci0_scr0 = 0; /* (0=default value anyway), select clock source */
+   \   000000EE   18EE               SUB.B   R6L,R6L
+   \   000000F0   3E7A               MOV.B   R6L,@0xFFFFFF7A
+    255                  sci0_smr0 = 0;  /* 8-None-1, processor clock with no division. */
+   \   000000F2   3E78               MOV.B   R6L,@0xFFFFFF78
+    256          
+    257                  sci0_brr0 = 12; /* 9600 baud */
+   \   000000F4   FE0C               MOV.B   #12,R6L
+   \   000000F6   3E79               MOV.B   R6L,@0xFFFFFF79
+    258                              
+    259                  /* Should wait one bit time here */
+    260                  wait (2);
+   \   000000F8   1AE6               SUB.L   ER6,ER6
+   \   000000FA   FE02               MOV.B   #2,R6L
+   \   000000FC   5E......           JSR     @wait:24
+    261          
+    262                  sci0_scr0 |= SCR_TE; /* Enable the transmitter. */
+   \   00000100   7F7A7050           BSET    #5,@0xFFFFFF7A
+    263          
+    264          
+    265                  /* We prob wont use the Rx - but if we do - make sure it is not allowed to float!! */
+    266                  // sci0_scr0 |= SCR_RE; /* Enable the rx. */
+    267                  // sci0_scr0 |= SCR_RIE; /* Enable the rx. interrupt */
+    268          
+    269          /* END Serial port initialisation. */
+    270          
+    271          }
+   \   00000104   5470               RTS     
+    272          
+    273          
+   \                     	COMMON	INTVEC
+   \                     	DS.B	320
+   \                     	DC.L	serial_receive_error_service
+   \                     	DS.B	4
+   \                     	DC.L	serial_transmit_service
+   \                     	RSEG	UDATA2
+   \                     print_temp:
+   \                     	DS.B	260
+   \                     input_buffer:
+   \                     	DS.B	256
+   \                     output_buffer:
+   \                     	DS.B	256
+   \                     	RSEG	IDATA2
+   \                     control_c_break_allowed:
+   \                     	DS.B	1
+   \                     input_head:
+   \                     	DS.B	1
+   \                     input_tail:
+   \                     	DS.B	1
+   \                     output_head:
+   \                     	DS.B	1
+   \                     output_tail:
+   \                     	DS.B	1
+   \                     transmit_hs_status:
+   \                     	DS.B	1
+   \                     	RSEG	CDATA2
+   \                     	DC.B	0
+   \                     	DC.B	0
+   \                     	DC.B	0
+   \                     	DC.B	0
+   \                     	DC.B	0
+   \                     	DC.B	1
+   \                     	END
+
+Errors: none
+Warnings: none
+Code size: 262
+Constant size: 338
+Static variable size: 778
+

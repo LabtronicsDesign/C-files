@@ -1,0 +1,1306 @@
+##############################################################################
+#                                                                            #
+# IAR H8 C-Compiler V1.53F/WIN                                               #
+#                                                                            #
+#       Compile time  =  19/Jun/2003  11:41:54                               #
+#       Target option =  H8S/2300                                            #
+#       Memory model  =  large                                               #
+#       Source file   =  h:\jobs\eumedic3\graphic.c                          #
+#       List file     =  h:\jobs\eumedic3\debug\list\graphic.lst             #
+#       Object file   =  h:\jobs\eumedic3\debug\obj\graphic.r37              #
+#       Command line  =  -v3 -ml -OH:\Jobs\Eumedic3\Debug\Obj\ -RCODE -s9    #
+#                        -um0I0 -e -K -g -LH:\Jobs\Eumedic3\Debug\List\ -q   #
+#                        -t8 -IC:\IAR\EW23\h8\inc\                           #
+#                        H:\Jobs\Eumedic3\Graphic.c                          #
+#                                                                            #
+#                           Copyright 2002 IAR Systems. All rights reserved. #
+##############################################################################
+
+   \                     	NAME	graphic(17)
+   \                     	RSEG	CODE(1)
+   \                     	RSEG	CONST(1)
+   \                     	RSEG	UDATA2(1)
+   \                     	RSEG	IDATA2(1)
+   \                     	RSEG	CDATA2(1)
+   \                     	PUBLIC	bar_graph
+   \                     	PUBLIC	changed_lines
+   \                     	PUBLIC	clear_screen
+   \                     	PUBLIC	disp_data
+   \                     	PUBLIC	end_masks
+   \                     	PUBLIC	fill_rectangle
+   \                     	EXTERN	font_data1
+   \                     	EXTERN	font_data2
+   \                     	PUBLIC	glcd_control_write
+   \                     	PUBLIC	glcd_init
+   \                     	PUBLIC	glcd_print_string
+   \                     	EXTERN	memset
+   \                     	PUBLIC	plot_big_char
+   \                     	PUBLIC	plot_small_char
+   \                     	PUBLIC	plot_sprite
+   \                     	PUBLIC	sci1_init
+   \                     	PUBLIC	sci1_send
+   \                     	PUBLIC	set_contrast
+   \                     	PUBLIC	set_viewpoint
+   \                     	PUBLIC	start_masks
+   \                     	PUBLIC	update_display
+   \                     	PUBLIC	upside_down
+   \                     	EXTERN	wait
+   \                     	EXTERN	?CLH8SL_1_42_L00
+   \                     	RSEG	CODE
+      1          /*
+      2          
+      3          
+      4          Copyright 2001 Eumedic Ltd.
+      5          
+      6          */
+      7          
+      8          #pragma language=extended       /* Enable use of extended keywords */
+      9          
+     10          #include <stdio.h>
+     11          #include <inh8.h>               /* Intrinsic Funcs */
+     12          #include <string.h>
+     13          
+     14          #include "hardware.h"   
+     15          #include "serial.h"     
+     16          #include "time.h"                               
+     17          #include "sysinit.h"
+     18          #include "graphic.h"
+     19          #include "fonts.h"
+     20          #include "general.h"
+     21          #include "debug.h"
+     22          
+     23                  
+     24          
+     25          
+     26          
+     27          
+     28          
+     29          
+     30          #define SCI1_SCR_INIT   0x01  /* no interrupts, Tx & Rx enabled, internal sync clock */
+     31          #define SCI1_SMR_INIT   0x80  /* synchronous, 8-bits, no parity, clock divide 1 */
+     32          #define SCI1_BRR_INIT   1    /* 500KHz @4M clock. [See H8S2345 Manual Page 430] */
+     33          
+     34          
+     35          /* scr bits */
+     36          #define TIE  0x80
+     37          #define RIE  0x40
+     38          #define TE   0x20
+     39          #define RE   0x10
+     40          #define MPIE 0x08
+     41          #define TEIE 0x04
+     42          #define CKE1 0x02
+     43          #define CKE0 0x01
+     44          
+     45          #define TEND BIT2
+     46          
+     47          #define MSB_FIRST sci1_scmr1 |= BIT3
+     48          #define LSB_FIRST sci1_scmr1 &= 0xFF - BIT3
+     49          
+     50          
+     51          #if 0
+     52          /* service the serial output - Debug */
+     53          void interrupt [SCI_TXI1] serial_transmit_service1()
+     54          {
+     55          
+     56                  STR("SER2 Interrupt!\r\n");
+     57          
+     58                  sci1_scr1 &= 0xFF - SCR_TIE; /* Turn off the interrupt. */ 
+     59          }
+     60          #endif
+     61          
+     62          /******************************************************************
+     63          NAME            : sci1_init
+     64          PURPOSE         : Initialise the second serial port to drive the LCD.
+     65          PARAMETERS      : NONE
+     66          RETURNS         : NONE
+     67          SIDE-EFFECTS: NONE
+     68          CALLED FROM : 
+     69          *********************************************************************/
+     70          
+     71          void sci1_init ()
+     72          {
+   \                     sci1_init:
+     73                  mstpcrl &= 0xFF - SCI1_MODULE_STOP; /* SCI are Go! */
+   \   00000000   7F3D7260           BCLR    #6,@0xFFFFFF3D
+     74          
+     75                  /* Initialise SCR1 */
+     76                  sci1_scr1 = SCI1_SCR_INIT;  /* init scr1 leaving TE and RE zero */
+   \   00000004   FE01               MOV.B   #1,R6L
+   \   00000006   3E82               MOV.B   R6L,@0xFFFFFF82
+     77                  sci1_smr1 = SCI1_SMR_INIT;
+   \   00000008   FE80               MOV.B   #128,R6L
+   \   0000000A   3E80               MOV.B   R6L,@0xFFFFFF80
+     78                  sci1_brr1 = SCI1_BRR_INIT; 
+   \   0000000C   FE01               MOV.B   #1,R6L
+   \   0000000E   3E81               MOV.B   R6L,@0xFFFFFF81
+     79                   
+     80                  MSB_FIRST;
+   \   00000010   7F867030           BSET    #3,@0xFFFFFF86
+     81          
+     82                  wait(2);    /* wait for one bit period - 1mS is overkill but OK */
+   \   00000014   1AE6               SUB.L   ER6,ER6
+   \   00000016   FE02               MOV.B   #2,R6L
+   \   00000018   5E......           JSR     @wait:24
+     83          
+     84                  sci1_scr1 = SCI1_SCR_INIT | TE;  /* Enable Tx. */
+   \   0000001C   FE21               MOV.B   #33,R6L
+   \   0000001E   3E82               MOV.B   R6L,@0xFFFFFF82
+     85          }
+   \   00000020   5470               RTS     
+     86          
+     87          /******************************************************************
+     88          NAME            : sci1_send
+     89          PURPOSE         : Send a character from the synch serial port.
+     90          PARAMETERS      : unsigned char senddata: the char to send.
+     91          RETURNS         : NONE
+     92          SIDE-EFFECTS: NONE
+     93          CALLED FROM : 
+     94          *********************************************************************/
+     95          
+     96          void sci1_send (unsigned char senddata)
+     97          {
+   \                     sci1_send:
+   \                     ?0115:
+     98                  while ((sci1_ssr1 & TDRE) == 0);        /* wait for transmitter ready */
+   \   00000022   2684               MOV.B   @0xFFFFFF84,R6H
+   \   00000024   0C66               MOV     R6H,R6H
+   \   00000026   4CFA               BGE     ?0115
+     99                  sci1_tdr1 = senddata;                   /* transmit control with start bit set */
+   \   00000028   3E83               MOV.B   R6L,@0xFFFFFF83
+    100                  sci1_ssr1 &= 0xFF - TDRE;                       /* clear TDRE to start transmission */
+   \   0000002A   7F847270           BCLR    #7,@0xFFFFFF84
+    101          }
+   \   0000002E   5470               RTS     
+    102          
+    103          
+    104          #define GLCD_A0  BIT7
+    105          #define GLCD_CS1 BIT6
+    106          //#define GLCD_BITS (GLCD_A0 | GLCD_CS1)
+    107          
+    108          /******************************************************************
+    109          NAME            : glcd_control_write
+    110          PURPOSE         : Write a byte to the control reg of the LCD.
+    111          PARAMETERS      : char byte: the byte to write.
+    112          RETURNS         : NONE
+    113          SIDE-EFFECTS: NONE
+    114          CALLED FROM : 
+    115          *********************************************************************/
+    116          
+    117          void glcd_control_write(char byte)
+    118          {
+   \                     glcd_control_write:
+   \                     ?0010:
+    119                  /* Make sure ALL bits out done before changing A0 and bit direction! */
+    120                  /* As the A0 is clocked in at the end of the data... */
+    121                  while ((sci1_ssr1 & TEND) == 0);
+   \   00000030   7E847320           BTST    #2,@0xFFFFFF84
+   \   00000034   47FA               BEQ     ?0010
+    122          
+    123                  pedr &= 0xFF - GLCD_A0; 
+   \   00000036   7F6D7270           BCLR    #7,@0xFFFFFF6D
+    124                  sci1_send(byte);                
+   \   0000003A   55E6               BSR     sci1_send
+    125          }
+   \   0000003C   5470               RTS     
+    126          
+    127          
+    128          
+    129          
+    130          char disp_data[DISP_BUFF_SIZE];
+    131          
+    132          char changed_lines[PAGES_IN_DISPLAY];
+    133          
+    134          
+    135          /******************************************************************
+    136          NAME            : set_contrast
+    137          PURPOSE         : set the contrast on the display according to the global value.
+    138          PARAMETERS      : NONE
+    139          RETURNS         : NONE
+    140          SIDE-EFFECTS: NONE
+    141          CALLED FROM : 
+    142          *********************************************************************/
+    143          
+    144          void set_contrast(char contr)
+    145          {
+   \                     set_contrast:
+    146                  glcd_control_write(0x80 | ( contr & 0x1F));  //SET THE CONTRAST 
+   \   0000003E   EE9F               AND.B   #159,R6L
+   \   00000040   CE80               OR.B    #128,R6L
+   \   00000042   55EC               BSR     glcd_control_write
+    147          }       
+   \   00000044   5470               RTS     
+    148          
+    149          
+    150          char upside_down = 0;
+    151          
+    152          /******************************************************************
+    153          NAME            : set_viewpoint
+    154          PURPOSE         : Set whether the display is upsidedown or not.
+    155          PARAMETERS      : char upside_down_p: TRUE if we need the display upsidedown.
+    156          RETURNS         : NONE
+    157          SIDE-EFFECTS: NONE
+    158          CALLED FROM : 
+    159          *********************************************************************/
+    160          
+    161          void set_viewpoint(char upside_down_p)
+    162          {
+   \                     set_viewpoint:
+    163                  upside_down = upside_down_p;
+   \   00000046   6AAE....           MOV.B   R6L,@upside_down:32
+   \            ....    
+    164                  /* Set all lines changed. */
+    165                  memset(changed_lines , 1 , PAGES_IN_DISPLAY);
+   \   0000004C   79060008           MOV.W   #8,R6
+   \   00000050   6DF6               PUSH.W  R6
+   \   00000052   79050001           MOV.W   #1,R5
+   \   00000056   7A06....           MOV.L   #changed_lines,ER6
+   \            ....    
+   \   0000005C   5E......           JSR     @memset:24
+   \   00000060   0BD7               INC.W   #2,R7
+    166          }       
+   \   00000062   5470               RTS     
+    167          
+    168          
+    169          /******************************************************************
+    170          NAME            : update_display 
+    171          PURPOSE         : Write the contents of the ram buffer of display 
+    172                                          data to the LCD.  Doesn't write to lines that
+    173                                          have not been recorded as having changed.
+    174          PARAMETERS      : NONE
+    175          RETURNS         : NONE
+    176          SIDE-EFFECTS: NONE
+    177          CALLED FROM : 
+    178          *********************************************************************/
+    179          
+    180          void update_display()
+    181          {
+   \                     update_display:
+   \   00000064   01006DF0           PUSH.L  ER0
+   \   00000068   6DF1               PUSH.W  R1
+    182           char i,j;
+    183           register char * data_pointer;
+    184          
+    185                  data_pointer = disp_data;        /* Start at the begining of the display RAM. */
+   \   0000006A   7A00....           MOV.L   #disp_data,ER0
+   \            ....    
+    186          
+    187                  /* Make sure the clock can get back in to synch if it gets corrupted. */
+    188              pedr |= GLCD_CS1;  /* Turn off CS\  */
+   \   00000070   7F6D7060           BSET    #6,@0xFFFFFF6D
+    189              pedr &= 0xFF - GLCD_CS1;  /* Turn on CS\  */
+   \   00000074   7F6D7260           BCLR    #6,@0xFFFFFF6D
+    190          
+    191                  if (!upside_down)
+   \   00000078   6A2E....           MOV.B   @upside_down:32,R6L
+   \            ....    
+   \   0000007E   4668               BNE     ?0017
+    192                  {
+    193                          glcd_control_write(0xA0);  /* Normal left & right */    
+   \   00000080   FEA0               MOV.B   #160,R6L
+   \   00000082   55AC               BSR     glcd_control_write
+    194          
+    195                          /* 8 Pages...each page starts at col 33 due to 'output configuration'. */
+    196                          for (j=0; j<8; j++ )
+   \   00000084   1899               SUB.B   R1L,R1L
+   \                     ?0019:
+   \   00000086   A908               CMP.B   #8,R1L
+   \   00000088   584000CE           BCC     ?0033
+    197                          {
+    198                                  if (changed_lines[j])
+   \   0000008C   0C9E               MOV.B   R1L,R6L
+   \   0000008E   1756               EXTU.W  R6
+   \   00000090   17F6               EXTS.L  ER6
+   \   00000092   78606A2D           MOV.B   @(changed_lines:32,ER6),R5L
+   \            ........
+   \   0000009A   4744               BEQ     ?0023
+    199                                  {
+    200                                          changed_lines[j] = 0;
+   \   0000009C   18DD               SUB.B   R5L,R5L
+   \   0000009E   0C9E               MOV.B   R1L,R6L
+   \   000000A0   1756               EXTU.W  R6
+   \   000000A2   17F6               EXTS.L  ER6
+   \   000000A4   78606AAD           MOV.B   R5L,@(changed_lines:32,ER6)
+   \            ........
+    201          
+    202                                          glcd_control_write(0xB0 | j);   //page j
+   \   000000AC   0C9E               MOV.B   R1L,R6L
+   \   000000AE   CEB0               OR.B    #176,R6L
+   \   000000B0   5C00FF7C           BSR     glcd_control_write
+    203                                          glcd_control_write(0x12);               //col msNyb=2   
+   \   000000B4   FE12               MOV.B   #18,R6L
+   \   000000B6   5C00FF76           BSR     glcd_control_write
+    204                                          glcd_control_write(0x01);               //col lsNyb=1   
+   \   000000BA   FE01               MOV.B   #1,R6L
+   \   000000BC   5C00FF70           BSR     glcd_control_write
+   \                     ?0025:
+    205          
+    206          
+    207                                          /* Make sure ALL serial data bits sent before changing A0 and bit direction! */
+    208                                          while ((sci1_ssr1 & TEND) == 0);
+   \   000000C0   7E847320           BTST    #2,@0xFFFFFF84
+   \   000000C4   47FA               BEQ     ?0025
+    209          
+    210                                          pedr |= GLCD_A0;                  /* Raise A0 to send to data register. */
+   \   000000C6   7F6D7070           BSET    #7,@0xFFFFFF6D
+    211          
+    212                                          /* COLS_IN_LCD_PAGE bytes per page... */
+    213                                          for (i=COLS_IN_LCD_PAGE; i; i--)
+   \   000000CA   F164               MOV.B   #100,R1H
+   \                     ?0028:
+   \   000000CC   0C11               MOV.B   R1H,R1H
+   \   000000CE   470A               BEQ     ?0027
+    214                                          {       
+    215                                                  sci1_send(*data_pointer++);
+   \   000000D0   6C0E               MOV.B   @ER0+,R6L
+   \   000000D2   5C00FF4C           BSR     sci1_send
+   \   000000D6   81FF               ADD.B   #-1,R1H
+   \   000000D8   40F2               BRA     ?0028
+   \                     ?0027:
+    216                                          }
+    217                                          data_pointer += COLS_IN_PAGE - COLS_IN_LCD_PAGE;
+   \   000000DA   7910001C           ADD.W   #28,R0
+    218                                  }
+    219                                  else
+   \   000000DE   4004               BRA     ?0031
+   \                     ?0023:
+    220                                  {
+    221                                     data_pointer += COLS_IN_PAGE;        
+   \   000000E0   79100080           ADD.W   #128,R0
+   \                     ?0031:
+   \   000000E4   8901               ADD.B   #1,R1L
+    222                                  }
+    223                          }
+    224                  }
+   \   000000E6   409E               BRA     ?0019
+    225                  else
+   \                     ?0017:
+    226                  {
+    227          
+    228                          glcd_control_write(0xA1);  /* Reversed left & right */  
+   \   000000E8   FEA1               MOV.B   #161,R6L
+   \   000000EA   5C00FF42           BSR     glcd_control_write
+    229          
+    230          
+    231                          /* 8 Pages...each page starts at col 33 due to 'output configuration'. */
+    232                          for (j=0; j<8; j++ )
+   \   000000EE   1899               SUB.B   R1L,R1L
+   \                     ?0034:
+   \   000000F0   A908               CMP.B   #8,R1L
+   \   000000F2   4466               BCC     ?0033
+    233                          {
+    234                                  if (changed_lines[j])
+   \   000000F4   0C9E               MOV.B   R1L,R6L
+   \   000000F6   1756               EXTU.W  R6
+   \   000000F8   17F6               EXTS.L  ER6
+   \   000000FA   78606A2D           MOV.B   @(changed_lines:32,ER6),R5L
+   \            ........
+   \   00000102   474E               BEQ     ?0038
+    235                                  {
+    236                                          changed_lines[j] = 0;
+   \   00000104   18DD               SUB.B   R5L,R5L
+   \   00000106   0C9E               MOV.B   R1L,R6L
+   \   00000108   1756               EXTU.W  R6
+   \   0000010A   17F6               EXTS.L  ER6
+   \   0000010C   78606AAD           MOV.B   R5L,@(changed_lines:32,ER6)
+   \            ........
+    237          
+    238                                          glcd_control_write(0xB0 | (7-j));       //page j
+   \   00000114   FE07               MOV.B   #7,R6L
+   \   00000116   189E               SUB.B   R1L,R6L
+   \   00000118   CEB0               OR.B    #176,R6L
+   \   0000011A   5C00FF12           BSR     glcd_control_write
+    239                                          glcd_control_write(0x12);               //col msNyb=2   
+   \   0000011E   FE12               MOV.B   #18,R6L
+   \   00000120   5C00FF0C           BSR     glcd_control_write
+    240                                          glcd_control_write(0x01);               //col lsNyb=1   
+   \   00000124   FE01               MOV.B   #1,R6L
+   \   00000126   5C00FF06           BSR     glcd_control_write
+   \                     ?0040:
+    241          
+    242          
+    243                                          /* Make sure ALL serial data bits sent before changing A0 and bit direction! */
+    244                                          while ((sci1_ssr1 & TEND) == 0);
+   \   0000012A   7E847320           BTST    #2,@0xFFFFFF84
+   \   0000012E   47FA               BEQ     ?0040
+    245          
+    246                                          pedr |= GLCD_A0;                  /* Raise A0 to send to data register. */
+   \   00000130   7F6D7070           BSET    #7,@0xFFFFFF6D
+    247          
+    248                                          LSB_FIRST;
+   \   00000134   7F867230           BCLR    #3,@0xFFFFFF86
+    249          
+    250                                          /* COLS_IN_LCD_PAGE bytes per page... */
+    251                                          for (i=COLS_IN_LCD_PAGE; i; i--)
+   \   00000138   F164               MOV.B   #100,R1H
+   \                     ?0043:
+   \   0000013A   0C11               MOV.B   R1H,R1H
+   \   0000013C   470A               BEQ     ?0042
+    252                                          {                     
+    253                                                  sci1_send(*data_pointer++);
+   \   0000013E   6C0E               MOV.B   @ER0+,R6L
+   \   00000140   5C00FEDE           BSR     sci1_send
+   \   00000144   81FF               ADD.B   #-1,R1H
+   \   00000146   40F2               BRA     ?0043
+   \                     ?0042:
+    254                                          }
+    255                                          MSB_FIRST;
+   \   00000148   7F867030           BSET    #3,@0xFFFFFF86
+    256          
+    257                                          data_pointer += COLS_IN_PAGE - COLS_IN_LCD_PAGE;
+   \   0000014C   7910001C           ADD.W   #28,R0
+    258                                  }
+    259                                  else
+   \   00000150   4004               BRA     ?0046
+   \                     ?0038:
+    260                                  {
+    261                                     data_pointer += COLS_IN_PAGE;        
+   \   00000152   79100080           ADD.W   #128,R0
+   \                     ?0046:
+   \   00000156   8901               ADD.B   #1,R1L
+    262                                  }
+    263                          }
+    264                  }
+   \   00000158   4096               BRA     ?0034
+   \                     ?0033:
+    265          }       
+   \   0000015A   6D71               POP.W   R1
+   \   0000015C   01006D70           POP.L   ER0
+   \   00000160   5470               RTS     
+    266          
+    267          
+    268          #define CLEAR_DISP_RAM memset(disp_data,0,DISP_BUFF_SIZE)
+    269          
+    270          
+    271          /* Masks for vertical line and rectangle drawing. */
+    272          const char start_masks[] =
+    273          {
+    274                  0xFF,
+    275                  0xFE,
+    276                  0xFC,
+    277                  0xF8,
+    278                  0xF0,
+    279                  0xE0,
+    280                  0xC0,
+    281                  0x80
+    282          };
+    283          
+    284          const char end_masks[] =
+    285          {
+    286                  0x01,
+    287                  0x03,
+    288                  0x07,
+    289                  0x0F,
+    290                  0x1F,
+    291                  0x3F,
+    292                  0x7F,
+    293                  0xFF
+    294          };
+    295          
+    296          
+    297          /******************************************************************
+    298          NAME            : fill_rectangle
+    299          PURPOSE         : Blackout a rectangle in pixel coordinates.  Y is downwards(?), X is leftwards.
+    300          PARAMETERS      : char x1, char y1, char x2, char y2: coordinates of the rectangle.
+    301          RETURNS         : NONE
+    302          SIDE-EFFECTS: NONE
+    303          CALLED FROM : 
+    304          *********************************************************************/
+    305          
+    306          void fill_rectangle(char x1, char y1, char x2, char y2)
+    307          {
+   \                     fill_rectangle:
+   \   00000162   01006DF0           PUSH.L  ER0
+   \   00000166   6DF1               PUSH.W  R1
+   \   00000168   6DF2               PUSH.W  R2
+   \   0000016A   6DF3               PUSH.W  R3
+   \   0000016C   0CE9               MOV.B   R6L,R1L
+   \   0000016E   0CDE               MOV.B   R5L,R6L
+   \   00000170   6E70000F           MOV.B   @(15,SP),R0H
+   \   00000174   6E780011           MOV.B   @(17,SP),R0L
+    308                  register char start_row = y1>>3;
+   \   00000178   0CE1               MOV.B   R6L,R1H
+   \   0000017A   1141               SHLR.B  #2,R1H
+   \   0000017C   1101               SHLR.B  R1H
+    309                  register char * ram_ptr = disp_data + start_row * COLS_IN_PAGE + x1;
+   \   0000017E   7A05....           MOV.L   #disp_data,ER5
+   \            ....    
+   \   00000184   0C1A               MOV.B   R1H,R2L
+   \   00000186   1752               EXTU.W  R2
+   \   00000188   0D2E               MOV.W   R2,E6
+   \   0000018A   10DE               SHAL.W  #2,E6
+   \   0000018C   10DE               SHAL.W  #2,E6
+   \   0000018E   10DE               SHAL.W  #2,E6
+   \   00000190   109E               SHAL.W  E6
+   \   00000192   0C9A               MOV.B   R1L,R2L
+   \   00000194   1752               EXTU.W  R2
+   \   00000196   092E               ADD.W   R2,E6
+   \   00000198   09E5               ADD.W   E6,R5
+    310                  char i,j,cl = start_row;
+    311                  char bytes_across;
+    312                  signed char full_rows;
+    313          
+    314                  /* Work out the masks */
+    315                  char start_mask = start_masks[y1 & 7];
+   \   0000019A   EE07               AND.B   #7,R6L
+   \   0000019C   1756               EXTU.W  R6
+   \   0000019E   17F6               EXTS.L  ER6
+   \   000001A0   78606A2A           MOV.B   @(start_masks:32,ER6),R2L
+   \            ........
+    316                  char end_mask = end_masks[y2 & 7];
+   \   000001A8   0C8E               MOV.B   R0L,R6L
+   \   000001AA   EE07               AND.B   #7,R6L
+   \   000001AC   1756               EXTU.W  R6
+   \   000001AE   17F6               EXTS.L  ER6
+   \   000001B0   78606A22           MOV.B   @(end_masks:32,ER6),R2H
+   \            ........
+    317                  full_rows = (y2>>3) - start_row -1;
+   \   000001B8   1148               SHLR.B  #2,R0L
+   \   000001BA   1108               SHLR.B  R0L
+   \   000001BC   1818               SUB.B   R1H,R0L
+   \   000001BE   88FF               ADD.B   #-1,R0L
+    318          
+    319          
+    320          
+    321                  if (full_rows < 0)
+   \   000001C0   0C88               MOV     R0L,R0L
+   \   000001C2   4C02               BGE     ?0048
+    322                  {
+    323                          start_mask &= end_mask; 
+   \   000001C4   162A               AND.B   R2H,R2L
+   \                     ?0048:
+    324                  }
+    325          
+    326                  bytes_across = x2-x1;
+   \   000001C6   1890               SUB.B   R1L,R0H
+    327          
+    328                  /* Do the start bytes */
+    329                  for (i=0; i<bytes_across; i++)
+   \   000001C8   1899               SUB.B   R1L,R1L
+   \                     ?0050:
+   \   000001CA   1C09               CMP.B   R0H,R1L
+   \   000001CC   4414               BCC     ?0049
+    330                  {
+    331                          ram_ptr[i] |= start_mask;
+   \   000001CE   0C9E               MOV.B   R1L,R6L
+   \   000001D0   1756               EXTU.W  R6
+   \   000001D2   0D68               MOV.W   R6,E0
+   \   000001D4   0FD6               MOV.L   ER5,ER6
+   \   000001D6   0986               ADD.W   E0,R6
+   \   000001D8   686B               MOV.B   @ER6,R3L
+   \   000001DA   14AB               OR.B    R2L,R3L
+   \   000001DC   68EB               MOV.B   R3L,@ER6
+   \   000001DE   8901               ADD.B   #1,R1L
+   \   000001E0   40E8               BRA     ?0050
+   \                     ?0049:
+    332                  }
+    333                  changed_lines[cl++] = 1;
+   \   000001E2   F901               MOV.B   #1,R1L
+   \   000001E4   0C1E               MOV.B   R1H,R6L
+   \   000001E6   0A01               INC.B   R1H
+   \   000001E8   1756               EXTU.W  R6
+   \   000001EA   17F6               EXTS.L  ER6
+   \   000001EC   78606AA9           MOV.B   R1L,@(changed_lines:32,ER6)
+   \            ........
+    334          
+    335                  /* Do the middle bytes. */
+    336                  for (j=0; j<full_rows ; j++ )
+   \   000001F4   18AA               SUB.B   R2L,R2L
+   \                     ?0054:
+   \   000001F6   0C8E               MOV.B   R0L,R6L
+   \   000001F8   17D6               EXTS.W  R6
+   \   000001FA   0D6E               MOV.W   R6,E6
+   \   000001FC   0CAE               MOV.B   R2L,R6L
+   \   000001FE   1756               EXTU.W  R6
+   \   00000200   1D6E               CMP.W   R6,E6
+   \   00000202   4F32               BLE     ?0053
+    337                  {
+    338                          ram_ptr+= COLS_IN_PAGE;
+   \   00000204   79150080           ADD.W   #128,R5
+    339                          for (i=0; i<bytes_across; i++)
+   \   00000208   1899               SUB.B   R1L,R1L
+   \                     ?0058:
+   \   0000020A   1C09               CMP.B   R0H,R1L
+   \   0000020C   4412               BCC     ?0057
+    340                          {
+    341                                  ram_ptr[i] = 0xFF;
+   \   0000020E   FBFF               MOV.B   #255,R3L
+   \   00000210   0C9E               MOV.B   R1L,R6L
+   \   00000212   1756               EXTU.W  R6
+   \   00000214   0D68               MOV.W   R6,E0
+   \   00000216   0FD6               MOV.L   ER5,ER6
+   \   00000218   0986               ADD.W   E0,R6
+   \   0000021A   68EB               MOV.B   R3L,@ER6
+   \   0000021C   8901               ADD.B   #1,R1L
+   \   0000021E   40EA               BRA     ?0058
+   \                     ?0057:
+    342                          }
+    343                          changed_lines[cl++] = 1;
+   \   00000220   F901               MOV.B   #1,R1L
+   \   00000222   0C1E               MOV.B   R1H,R6L
+   \   00000224   0A01               INC.B   R1H
+   \   00000226   1756               EXTU.W  R6
+   \   00000228   17F6               EXTS.L  ER6
+   \   0000022A   78606AA9           MOV.B   R1L,@(changed_lines:32,ER6)
+   \            ........
+   \   00000232   8A01               ADD.B   #1,R2L
+   \   00000234   40C0               BRA     ?0054
+   \                     ?0053:
+    344                  }
+    345          
+    346                  if (full_rows >= 0)
+   \   00000236   0C88               MOV     R0L,R0L
+   \   00000238   4D2C               BLT     ?0062
+    347                  {
+    348                          ram_ptr+= COLS_IN_PAGE;
+   \   0000023A   79150080           ADD.W   #128,R5
+    349          
+    350                          /* Do the end bytes. */
+    351                          for (i=0; i<bytes_across; i++)
+   \   0000023E   1899               SUB.B   R1L,R1L
+   \                     ?0064:
+   \   00000240   1C09               CMP.B   R0H,R1L
+   \   00000242   4412               BCC     ?0063
+    352                          {
+    353                                  ram_ptr[i] |= end_mask;
+   \   00000244   0C9B               MOV.B   R1L,R3L
+   \   00000246   1753               EXTU.W  R3
+   \   00000248   0FD6               MOV.L   ER5,ER6
+   \   0000024A   0936               ADD.W   R3,R6
+   \   0000024C   6868               MOV.B   @ER6,R0L
+   \   0000024E   1428               OR.B    R2H,R0L
+   \   00000250   68E8               MOV.B   R0L,@ER6
+   \   00000252   8901               ADD.B   #1,R1L
+   \   00000254   40EA               BRA     ?0064
+   \                     ?0063:
+    354                          }
+    355                          changed_lines[cl++] = 1;
+   \   00000256   FD01               MOV.B   #1,R5L
+   \   00000258   0C1E               MOV.B   R1H,R6L
+   \   0000025A   1756               EXTU.W  R6
+   \   0000025C   17F6               EXTS.L  ER6
+   \   0000025E   78606AAD           MOV.B   R5L,@(changed_lines:32,ER6)
+   \            ........
+   \                     ?0062:
+    356                  }
+    357          }
+   \   00000266   6D73               POP.W   R3
+   \   00000268   6D72               POP.W   R2
+   \   0000026A   6D71               POP.W   R1
+   \   0000026C   01006D70           POP.L   ER0
+   \   00000270   5470               RTS     
+    358          
+    359          
+    360          /******************************************************************
+    361          NAME            : plot_small_char
+    362          PURPOSE         : Plot a small font char, on one of the lines of the LCD.
+    363                                    Note: This can only write to particular 8-pixel high lines
+    364                                    of the LCD. It also writes over anything underneath. 
+    365          PARAMETERS      : char line: The LCD line to write to.
+    366                                    char col: The LCD column to write to.
+    367                                    char c: The character to write.
+    368                                    char clear_space_after: Clear the space after the char?
+    369          RETURNS         : NONE
+    370          SIDE-EFFECTS: NONE
+    371          CALLED FROM : 
+    372          *********************************************************************/
+    373          
+    374          
+    375          void plot_small_char(char line, char col, char c, char clear_space_after)
+    376          {
+   \                     plot_small_char:
+   \   00000272   01106DF0           STM     (ER0-ER1),@-SP
+   \   00000276   6E79000D           MOV.B   @(13,SP),R1L
+    377          /* Fixed width font. */
+    378          #define FONT_FIRST_CHAR '!'
+    379          #define FONT_FIXED_WIDTH 5
+    380          #define FONT_FIXED_INCREMENT 8
+    381                  register char * ram_ptr = disp_data + line * COLS_IN_PAGE + col; /* The pointer into the disp. RAM. */
+   \   0000027A   7A00....           MOV.L   #disp_data,ER0
+   \            ....    
+   \   00000280   1756               EXTU.W  R6
+   \   00000282   10D6               SHAL.W  #2,R6
+   \   00000284   10D6               SHAL.W  #2,R6
+   \   00000286   10D6               SHAL.W  #2,R6
+   \   00000288   1096               SHAL.W  R6
+   \   0000028A   1755               EXTU.W  R5
+   \   0000028C   0956               ADD.W   R5,R6
+   \   0000028E   0960               ADD.W   R6,R0
+    382                  register char * font_ptr =  (char *)font_data1 + (c-FONT_FIRST_CHAR) * FONT_FIXED_INCREMENT;
+   \   00000290   7A06....           MOV.L   #font_data1,ER6
+   \            ....    
+   \   00000296   0C9D               MOV.B   R1L,R5L
+   \   00000298   1755               EXTU.W  R5
+   \   0000029A   7915FFDF           ADD.W   #-33,R5
+   \   0000029E   10D5               SHAL.W  #2,R5
+   \   000002A0   1095               SHAL.W  R5
+   \   000002A2   0956               ADD.W   R5,R6
+    383                  register char i;
+    384          
+    385                  /* Space char etc. */
+    386                  if (c < FONT_FIRST_CHAR)
+   \   000002A4   A921               CMP.B   #33,R1L
+   \   000002A6   4412               BCC     ?0068
+    387                  {
+    388                          for (i=0; i<FONT_FIXED_WIDTH; i++)
+   \   000002A8   18DD               SUB.B   R5L,R5L
+   \                     ?0070:
+   \   000002AA   AD05               CMP.B   #5,R5L
+   \   000002AC   441E               BCC     ?0074
+    389                          {
+    390                                  *ram_ptr++ = 0;
+   \   000002AE   18EE               SUB.B   R6L,R6L
+   \   000002B0   0F81               MOV.L   ER0,ER1
+   \   000002B2   0B70               INC.L   #1,ER0
+   \   000002B4   689E               MOV.B   R6L,@ER1
+   \   000002B6   8D01               ADD.B   #1,R5L
+    391                          }
+    392                  }
+   \   000002B8   40F0               BRA     ?0070
+    393                  else /* Normal chars. */
+   \                     ?0068:
+    394                  {
+    395                          for (i=0; i<FONT_FIXED_WIDTH; i++)
+   \   000002BA   18DD               SUB.B   R5L,R5L
+   \                     ?0075:
+   \   000002BC   AD05               CMP.B   #5,R5L
+   \   000002BE   440C               BCC     ?0074
+    396                          {
+    397                                  *ram_ptr++ = *font_ptr++;         //Write the data: use '=' to wipe what's underneath.
+   \   000002C0   6C65               MOV.B   @ER6+,R5H
+   \   000002C2   0F81               MOV.L   ER0,ER1
+   \   000002C4   0B70               INC.L   #1,ER0
+   \   000002C6   6895               MOV.B   R5H,@ER1
+   \   000002C8   8D01               ADD.B   #1,R5L
+    398                          }
+    399                  }
+   \   000002CA   40F0               BRA     ?0075
+   \                     ?0074:
+    400          
+    401                  if (clear_space_after)
+   \   000002CC   6E7E000F           MOV.B   @(15,SP),R6L
+   \   000002D0   4704               BEQ     ?0079
+    402                  {
+    403                          *ram_ptr = 0;
+   \   000002D2   18EE               SUB.B   R6L,R6L
+   \   000002D4   688E               MOV.B   R6L,@ER0
+   \                     ?0079:
+    404                  }
+    405          
+    406          }
+   \   000002D6   01106D71           LDM     @SP+,(ER0-ER1)
+   \   000002DA   5470               RTS     
+    407          
+    408          #if 0
+    409          void invert_char(char line, char col)
+    410          {       char i;
+    411          
+    412                  register char * ram_ptr = disp_data + line * COLS_IN_PAGE + col-1; /* The pointer into the disp. RAM. */
+    413                  for (i = FONT_FIXED_WIDTH+2; i-- ;)
+    414                  {
+    415                     * ram_ptr = ~  (* ram_ptr);
+    416                     ram_ptr++;
+    417                  }
+    418          }       
+    419          #endif
+    420          
+    421          /******************************************************************
+    422          NAME            : bar_graph
+    423          PURPOSE         : Draws a 8-pixel high bar across the LCD, scaled 
+    424                                          according to the variable and it's max value.
+    425          PARAMETERS      : ...
+    426          RETURNS         : NONE
+    427          SIDE-EFFECTS: NONE
+    428          CALLED FROM : 
+    429          *********************************************************************/
+    430          
+    431          void bar_graph(char line, char col , char size , short max , short variable)
+    432          {
+   \                     bar_graph:
+   \   000002DC   01206DF0           STM     (ER0-ER2),@-SP
+   \   000002E0   6DF5               PUSH.W  R5
+   \   000002E2   0CED               MOV.B   R6L,R5L
+   \   000002E4   6E7E0001           MOV.B   @(1,SP),R6L
+   \   000002E8   0BD7               INC.W   #2,R7
+   \   000002EA   6E750011           MOV.B   @(17,SP),R5H
+   \   000002EE   6F7D0012           MOV.W   @(18,SP),E5
+    433                  register char * ram_ptr = disp_data + line * COLS_IN_PAGE + col; /* The pointer into the disp. RAM. */
+   \   000002F2   7A00....           MOV.L   #disp_data,ER0
+   \            ....    
+   \   000002F8   0CD9               MOV.B   R5L,R1L
+   \   000002FA   1751               EXTU.W  R1
+   \   000002FC   10D1               SHAL.W  #2,R1
+   \   000002FE   10D1               SHAL.W  #2,R1
+   \   00000300   10D1               SHAL.W  #2,R1
+   \   00000302   1091               SHAL.W  R1
+   \   00000304   1756               EXTU.W  R6
+   \   00000306   0961               ADD.W   R6,R1
+   \   00000308   0910               ADD.W   R1,R0
+    434                  char i,black_bytes;
+    435          
+    436                  black_bytes = variable * size / max     ;
+   \   0000030A   0C59               MOV.B   R5H,R1L
+   \   0000030C   1751               EXTU.W  R1
+   \   0000030E   6F760014           MOV.W   @(20,SP),R6
+   \   00000312   5216               MULXU.W R1,ER6
+   \   00000314   17F6               EXTS.L  ER6
+   \   00000316   01D053D6           DIVXS.W E5,ER6
+    437          
+    438          
+    439          //PRINT "%i %i %i\r\n",black_bytes,max,variable PREND
+    440          
+    441                  for (i = 0; i < black_bytes ; i++)
+   \   0000031A   1866               SUB.B   R6H,R6H
+   \                     ?0081:
+   \   0000031C   1CE6               CMP.B   R6L,R6H
+   \   0000031E   440C               BCC     ?0080
+    442                  {
+    443                          *ram_ptr++ = 0xFF;
+   \   00000320   F9FF               MOV.B   #255,R1L
+   \   00000322   0F82               MOV.L   ER0,ER2
+   \   00000324   0B70               INC.L   #1,ER0
+   \   00000326   68A9               MOV.B   R1L,@ER2
+   \   00000328   8601               ADD.B   #1,R6H
+   \   0000032A   40F0               BRA     ?0081
+   \                     ?0080:
+    444                  }
+    445          
+    446                  for (; i < size ; i++)
+   \   0000032C   1C56               CMP.B   R5H,R6H
+   \   0000032E   440C               BCC     ?0084
+    447                  {
+    448                          *ram_ptr++ = 0;
+   \   00000330   18EE               SUB.B   R6L,R6L
+   \   00000332   0F81               MOV.L   ER0,ER1
+   \   00000334   0B70               INC.L   #1,ER0
+   \   00000336   689E               MOV.B   R6L,@ER1
+   \   00000338   8601               ADD.B   #1,R6H
+   \   0000033A   40F0               BRA     ?0080
+   \                     ?0084:
+    449                  }
+    450                  changed_lines[line] = 1;
+   \   0000033C   FE01               MOV.B   #1,R6L
+   \   0000033E   1755               EXTU.W  R5
+   \   00000340   17F5               EXTS.L  ER5
+   \   00000342   78506AAE           MOV.B   R6L,@(changed_lines:32,ER5)
+   \            ........
+    451          }       
+   \   0000034A   01206D72           LDM     @SP+,(ER0-ER2)
+   \   0000034E   5470               RTS     
+    452          
+    453          /******************************************************************
+    454          NAME            : plot_big_char
+    455          PURPOSE         : Plot a big font char, on two of the lines of the LCD.
+    456                                    Note: This can only write to particular 8-pixel high lines
+    457                                    of the LCD. It also writes over anything underneath. 
+    458          PARAMETERS      : char line: The LCD line to write to.
+    459                                    char col: The LCD column to write to.
+    460                                    char c: The character to write.
+    461                                    char clear_space_after: Clear the space after the char?
+    462          RETURNS         : NONE
+    463          SIDE-EFFECTS: NONE
+    464          CALLED FROM : 
+    465          *********************************************************************/
+    466          
+    467          
+    468          void plot_big_char(char line, char col, char c, char clear_space_after)
+    469          {
+   \                     plot_big_char:
+   \   00000350   01006DF0           PUSH.L  ER0
+   \   00000354   6DF1               PUSH.W  R1
+   \   00000356   6DF2               PUSH.W  R2
+   \   00000358   6E79000D           MOV.B   @(13,SP),R1L
+    470          /* Fixed width font. */
+    471          #define FONT_FIRST_CHAR2 '!'
+    472          #define FONT_FIXED_WIDTH2 9
+    473          #define FONT_FIXED_INCREMENT2 18
+    474                  register char * ram_ptr = disp_data + line * COLS_IN_PAGE + col; /* The pointer into the disp. RAM. */
+   \   0000035C   7A00....           MOV.L   #disp_data,ER0
+   \            ....    
+   \   00000362   1756               EXTU.W  R6
+   \   00000364   10D6               SHAL.W  #2,R6
+   \   00000366   10D6               SHAL.W  #2,R6
+   \   00000368   10D6               SHAL.W  #2,R6
+   \   0000036A   1096               SHAL.W  R6
+   \   0000036C   1755               EXTU.W  R5
+   \   0000036E   0956               ADD.W   R5,R6
+   \   00000370   0960               ADD.W   R6,R0
+    475                  register char * font_ptr =  (char *)font_data2 + (c-FONT_FIRST_CHAR2) * FONT_FIXED_INCREMENT2;
+   \   00000372   7A05....           MOV.L   #font_data2,ER5
+   \            ....    
+   \   00000378   0C9A               MOV.B   R1L,R2L
+   \   0000037A   1752               EXTU.W  R2
+   \   0000037C   7912FFDF           ADD.W   #-33,R2
+   \   00000380   79060012           MOV.W   #18,R6
+   \   00000384   5226               MULXU.W R2,ER6
+   \   00000386   0965               ADD.W   R6,R5
+    476                  register char i;
+    477          
+    478                  /* Space char etc. */
+    479                  if (c < FONT_FIRST_CHAR2)
+   \   00000388   A921               CMP.B   #33,R1L
+   \   0000038A   4414               BCC     ?0089
+    480                  {
+    481                          for (i=0; i<FONT_FIXED_WIDTH2; i++)
+   \   0000038C   18EE               SUB.B   R6L,R6L
+   \                     ?0091:
+   \   0000038E   AE09               CMP.B   #9,R6L
+   \   00000390   4428               BCC     ?0095
+    482                          {
+    483                                  *ram_ptr = 0;
+   \   00000392   1866               SUB.B   R6H,R6H
+   \   00000394   6886               MOV.B   R6H,@ER0
+    484                                  *(ram_ptr - COLS_IN_PAGE) = 0;  
+   \   00000396   6E86FF80           MOV.B   R6H,@(-128,ER0)
+    485                                  ram_ptr++;
+   \   0000039A   0B50               INC.W   #1,R0
+   \   0000039C   8E01               ADD.B   #1,R6L
+    486                          }
+    487                  }
+   \   0000039E   40EE               BRA     ?0091
+    488                  else /* Normal chars. */
+   \                     ?0089:
+    489                  {
+    490                          for (i=0; i<FONT_FIXED_WIDTH2; i++)
+   \   000003A0   18EE               SUB.B   R6L,R6L
+   \                     ?0096:
+   \   000003A2   AE09               CMP.B   #9,R6L
+   \   000003A4   4414               BCC     ?0095
+    491                          {
+    492                                  *ram_ptr = *font_ptr;     //Write the data: use '=' to wipe what's underneath.
+   \   000003A6   6856               MOV.B   @ER5,R6H
+   \   000003A8   6886               MOV.B   R6H,@ER0
+    493                                  *(ram_ptr - COLS_IN_PAGE) = *(font_ptr + (FONT_FIXED_INCREMENT2/2));
+   \   000003AA   6E560009           MOV.B   @(9,ER5),R6H
+   \   000003AE   6E86FF80           MOV.B   R6H,@(-128,ER0)
+    494          
+    495                                  font_ptr++;
+   \   000003B2   0B55               INC.W   #1,R5
+    496                                  ram_ptr++;
+   \   000003B4   0B50               INC.W   #1,R0
+   \   000003B6   8E01               ADD.B   #1,R6L
+    497                          }
+    498                  }
+   \   000003B8   40E8               BRA     ?0096
+   \                     ?0095:
+    499          
+    500                  if (clear_space_after)
+   \   000003BA   6E7E000F           MOV.B   @(15,SP),R6L
+   \   000003BE   4708               BEQ     ?0100
+    501                  {
+    502                          *ram_ptr = 0;
+   \   000003C0   18EE               SUB.B   R6L,R6L
+   \   000003C2   688E               MOV.B   R6L,@ER0
+    503                          *(ram_ptr - COLS_IN_PAGE) = 0;  
+   \   000003C4   6E8EFF80           MOV.B   R6L,@(-128,ER0)
+   \                     ?0100:
+    504                  }
+    505          }       
+   \   000003C8   6D72               POP.W   R2
+   \   000003CA   6D71               POP.W   R1
+   \   000003CC   01006D70           POP.L   ER0
+   \   000003D0   5470               RTS     
+    506          
+    507          /******************************************************************
+    508          NAME            : glcd_print_string
+    509          PURPOSE         : Print a string to the LCD in either font at the
+    510                                          line and collumn given.
+    511          PARAMETERS      : NONE
+    512          RETURNS         : NONE
+    513          SIDE-EFFECTS: NONE
+    514          CALLED FROM : 
+    515          *********************************************************************/
+    516          
+    517          void glcd_print_string(char line, char col, char font, char * str)
+    518          {
+   \                     glcd_print_string:
+   \   000003D2   01106DF0           STM     (ER0-ER1),@-SP
+   \   000003D6   0CE8               MOV.B   R6L,R0L
+   \   000003D8   0CD0               MOV.B   R5L,R0H
+   \   000003DA   6E7E000D           MOV.B   @(13,SP),R6L
+   \   000003DE   01006F71           MOV.L   @(14,SP),ER1
+   \            000E    
+    519                  char c;
+    520          
+    521                  switch (font)
+   \   000003E4   AE01               CMP.B   #1,R6L
+   \   000003E6   4628               BNE     ?0106
+   \                     ?0102:
+    522                  {
+    523                          case 1:
+    524                                  while (c = *str++)
+   \   000003E8   6C1E               MOV.B   @ER1+,R6L
+   \   000003EA   4714               BEQ     ?0103
+    525                                  {
+    526                                          plot_small_char(line,col,c,*str);
+   \   000003EC   681D               MOV.B   @ER1,R5L
+   \   000003EE   6DF5               PUSH.W  R5
+   \   000003F0   6DF6               PUSH.W  R6
+   \   000003F2   0C0D               MOV.B   R0H,R5L
+   \   000003F4   0C8E               MOV.B   R0L,R6L
+   \   000003F6   5C00FE78           BSR     plot_small_char
+   \   000003FA   0B97               ADDS.L  #4,ER7
+    527                                          col += FONT_FIXED_WIDTH + 1;
+   \   000003FC   8006               ADD.B   #6,R0H
+   \   000003FE   40E8               BRA     ?0102
+   \                     ?0103:
+    528                                  }
+    529                                  changed_lines[line] = 1;
+   \   00000400   FE01               MOV.B   #1,R6L
+   \   00000402   1750               EXTU.W  R0
+   \   00000404   17F0               EXTS.L  ER0
+   \   00000406   78006AAE           MOV.B   R6L,@(changed_lines:32,ER0)
+   \            ........
+    530                                  break;
+   \   0000040E   403A               BRA     ?0110
+   \                     ?0106:
+   \   00000410   AE02               CMP.B   #2,R6L
+   \   00000412   4636               BNE     ?0110
+   \                     ?0108:
+    531          
+    532                          case 2:
+    533                                  while (c = *str++)
+   \   00000414   6C1E               MOV.B   @ER1+,R6L
+   \   00000416   4714               BEQ     ?0107
+    534                                  {
+    535                                          plot_big_char(line,col,c,*str);
+   \   00000418   681D               MOV.B   @ER1,R5L
+   \   0000041A   6DF5               PUSH.W  R5
+   \   0000041C   6DF6               PUSH.W  R6
+   \   0000041E   0C0D               MOV.B   R0H,R5L
+   \   00000420   0C8E               MOV.B   R0L,R6L
+   \   00000422   5C00FF2A           BSR     plot_big_char
+   \   00000426   0B97               ADDS.L  #4,ER7
+    536                                          col += FONT_FIXED_WIDTH2 + 1;
+   \   00000428   800A               ADD.B   #10,R0H
+   \   0000042A   40E8               BRA     ?0108
+   \                     ?0107:
+    537                                  }
+    538                                  changed_lines[line - 1] = changed_lines[line] = 1;
+   \   0000042C   FD01               MOV.B   #1,R5L
+   \   0000042E   0C8E               MOV.B   R0L,R6L
+   \   00000430   1756               EXTU.W  R6
+   \   00000432   17F6               EXTS.L  ER6
+   \   00000434   78606AAD           MOV.B   R5L,@(changed_lines:32,ER6)
+   \            ........
+   \   0000043C   FE01               MOV.B   #1,R6L
+   \   0000043E   1750               EXTU.W  R0
+   \   00000440   17F0               EXTS.L  ER0
+   \   00000442   78006AAE           MOV.B   R6L,@(changed_lines-1:32,ER0)
+   \            ........
+    539                                  break;
+   \                     ?0110:
+    540          
+    541                          default:
+    542                                  break;
+    543                  }
+    544          }
+   \   0000044A   01106D71           LDM     @SP+,(ER0-ER1)
+   \   0000044E   5470               RTS     
+    545          
+    546          
+    547          /******************************************************************
+    548          NAME            : plot_sprite
+    549          PURPOSE         : Plot a sprite on the LCD in either font at the
+    550                                          line and collumn given.
+    551          PARAMETERS      : NONE
+    552          RETURNS         : NONE
+    553          SIDE-EFFECTS: NONE
+    554          CALLED FROM : 
+    555          *********************************************************************/
+    556          
+    557          void plot_sprite(char line, char col, char font, char c)
+    558          {
+   \                     plot_sprite:
+   \   00000450   01006DF0           PUSH.L  ER0
+   \   00000454   6DF1               PUSH.W  R1
+   \   00000456   0CE8               MOV.B   R6L,R0L
+   \   00000458   6E76000B           MOV.B   @(11,SP),R6H
+   \   0000045C   6E7E000D           MOV.B   @(13,SP),R6L
+    559                  switch (font)
+   \   00000460   A601               CMP.B   #1,R6H
+   \   00000462   461E               BNE     ?0113
+    560                  {
+    561                          case 1:
+    562                                  plot_small_char(line,col,c,0);
+   \   00000464   1899               SUB.B   R1L,R1L
+   \   00000466   6DF1               PUSH.W  R1
+   \   00000468   6DF6               PUSH.W  R6
+   \   0000046A   0C8E               MOV.B   R0L,R6L
+   \   0000046C   5C00FE02           BSR     plot_small_char
+   \   00000470   0B97               ADDS.L  #4,ER7
+    563                                  changed_lines[line] = 1;
+   \   00000472   FE01               MOV.B   #1,R6L
+   \   00000474   1750               EXTU.W  R0
+   \   00000476   17F0               EXTS.L  ER0
+   \   00000478   78006AAE           MOV.B   R6L,@(changed_lines:32,ER0)
+   \            ........
+    564                                  break;
+   \   00000480   4030               BRA     ?0114
+   \                     ?0113:
+   \   00000482   A602               CMP.B   #2,R6H
+   \   00000484   462C               BNE     ?0114
+    565          
+    566                          case 2:
+    567                                  plot_big_char(line,col,c,0);
+   \   00000486   1899               SUB.B   R1L,R1L
+   \   00000488   6DF1               PUSH.W  R1
+   \   0000048A   6DF6               PUSH.W  R6
+   \   0000048C   0C8E               MOV.B   R0L,R6L
+   \   0000048E   5C00FEBE           BSR     plot_big_char
+   \   00000492   0B97               ADDS.L  #4,ER7
+    568                                  changed_lines[line - 1] = changed_lines[line] = 1;
+   \   00000494   FD01               MOV.B   #1,R5L
+   \   00000496   0C8E               MOV.B   R0L,R6L
+   \   00000498   1756               EXTU.W  R6
+   \   0000049A   17F6               EXTS.L  ER6
+   \   0000049C   78606AAD           MOV.B   R5L,@(changed_lines:32,ER6)
+   \            ........
+   \   000004A4   FE01               MOV.B   #1,R6L
+   \   000004A6   1750               EXTU.W  R0
+   \   000004A8   17F0               EXTS.L  ER0
+   \   000004AA   78006AAE           MOV.B   R6L,@(changed_lines-1:32,ER0)
+   \            ........
+    569                                  break;
+   \                     ?0114:
+    570          
+    571                          default:
+    572                                  break;
+    573                  }
+    574          }       
+   \   000004B2   6D71               POP.W   R1
+   \   000004B4   01006D70           POP.L   ER0
+   \   000004B8   5470               RTS     
+    575                  
+    576          
+    577          
+    578          /******************************************************************
+    579          NAME            : clear_screen
+    580          PURPOSE         : Clears the display RAM and sets the screen to all changed.
+    581                                          Does not update the LCD.
+    582          PARAMETERS      : NONE
+    583          RETURNS         : NONE
+    584          SIDE-EFFECTS: NONE
+    585          CALLED FROM : 
+    586          *********************************************************************/
+    587          void clear_screen()
+    588          {
+   \                     clear_screen:
+    589                  CLEAR_DISP_RAM;
+   \   000004BA   79060400           MOV.W   #1024,R6
+   \   000004BE   6DF6               PUSH.W  R6
+   \   000004C0   1955               SUB.W   R5,R5
+   \   000004C2   7A06....           MOV.L   #disp_data,ER6
+   \            ....    
+   \   000004C8   5E......           JSR     @memset:24
+   \   000004CC   0BD7               INC.W   #2,R7
+    590                  memset(changed_lines , 1 , PAGES_IN_DISPLAY);
+   \   000004CE   79060008           MOV.W   #8,R6
+   \   000004D2   6DF6               PUSH.W  R6
+   \   000004D4   79050001           MOV.W   #1,R5
+   \   000004D8   7A06....           MOV.L   #changed_lines,ER6
+   \            ....    
+   \   000004DE   5E......           JSR     @memset:24
+   \   000004E2   0BD7               INC.W   #2,R7
+    591          }       
+   \   000004E4   5470               RTS     
+    592          
+    593          
+    594          /******************************************************************
+    595          NAME            : glcd_init
+    596          PURPOSE         : Initialises the LCD controller.
+    597                                    Needs the synch serial port initialised first.
+    598          PARAMETERS      : NONE
+    599          RETURNS         : NONE
+    600          SIDE-EFFECTS: NONE
+    601          CALLED FROM : 
+    602          *********************************************************************/
+    603          
+    604          
+    605          
+    606          void glcd_init()
+    607          { 
+   \                     glcd_init:
+    608              pedr &= 0xFF - GLCD_CS1;  /* Turn on CS\  */
+   \   000004E6   7F6D7260           BCLR    #6,@0xFFFFFF6D
+    609          
+    610          
+    611                  /* Software reset. */
+    612                  glcd_control_write(0xE2);  //RESET DISPLAY      
+   \   000004EA   FEE2               MOV.B   #226,R6L
+   \   000004EC   5C00FB40           BSR     glcd_control_write
+    613          
+    614          
+    615                  glcd_control_write(0xC4);  //SETS OUTPUT STATE (configuration of segment drivers)       
+   \   000004F0   FEC4               MOV.B   #196,R6L
+   \   000004F2   5C00FB3A           BSR     glcd_control_write
+    616                  glcd_control_write(0xA9);  //SETS DUTY TO 1/64  
+   \   000004F6   FEA9               MOV.B   #169,R6L
+   \   000004F8   5C00FB34           BSR     glcd_control_write
+    617                  glcd_control_write(0x80 | ( DEFAULT_CONTRAST & 0x1F));  //SET THE CONTRAST      
+   \   000004FC   FE8A               MOV.B   #138,R6L
+   \   000004FE   5C00FB2E           BSR     glcd_control_write
+    618                  glcd_control_write(0x25);  //Onboard POWER ON
+   \   00000502   FE25               MOV.B   #37,R6L
+   \   00000504   5C00FB28           BSR     glcd_control_write
+    619                                                                     
+    620                  wait (50);                                 //PAUSE FOR THE TIMING CONSTRAINTS
+   \   00000508   1AE6               SUB.L   ER6,ER6
+   \   0000050A   FE32               MOV.B   #50,R6L
+   \   0000050C   5E......           JSR     @wait:24
+    621          
+    622                                                                     
+    623                  glcd_control_write(0xED);  //SETS POWER MODE    
+   \   00000510   FEED               MOV.B   #237,R6L
+   \   00000512   5C00FB1A           BSR     glcd_control_write
+    624                  glcd_control_write(0xAF);  //TURNS DISPLAY ON   
+   \   00000516   FEAF               MOV.B   #175,R6L
+   \   00000518   5C00FB14           BSR     glcd_control_write
+    625                  glcd_control_write(0x40);  //SET LINE ONE TO TOP LINE OF DISPLAY        
+   \   0000051C   FE40               MOV.B   #64,R6L
+   \   0000051E   5C00FB0E           BSR     glcd_control_write
+    626          
+    627                  clear_screen();
+   \   00000522   5596               BSR     clear_screen
+    628          }                                                          
+   \   00000524   5470               RTS     
+    629                                                                     
+    630          
+    631          
+    632          
+   \                     	RSEG	CONST
+   \                     start_masks:
+   \                     	DC.B	255
+   \                     	DC.B	254
+   \                     	DC.B	252
+   \                     	DC.B	248
+   \                     	DC.B	240
+   \                     	DC.B	224
+   \                     	DC.B	192
+   \                     	DC.B	128
+   \                     end_masks:
+   \                     	DC.B	1
+   \                     	DC.B	3
+   \                     	DC.B	7
+   \                     	DC.B	15
+   \                     	DC.B	31
+   \                     	DC.B	'?'
+   \                     	DC.B	127
+   \                     	DC.B	255
+   \                     	RSEG	UDATA2
+   \                     disp_data:
+   \                     	DS.B	1024
+   \                     changed_lines:
+   \                     	DS.B	8
+   \                     	RSEG	IDATA2
+   \                     upside_down:
+   \                     	DS.B	1
+   \                     	RSEG	CDATA2
+   \                     	DC.B	0
+   \                     	END
+
+Errors: none
+Warnings: none
+Code size: 1318
+Constant size: 17
+Static variable size: 1033
+
